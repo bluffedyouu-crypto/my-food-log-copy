@@ -302,28 +302,7 @@ export default function BowlBuilder() {
                   <p className="text-slate-600 text-xs mt-1">Drag from the sidebar</p>
                 </div>
               ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center p-6 gap-2">
-                  <div className="text-3xl mb-1">🥣</div>
-                  <div className="w-full space-y-1 max-h-48 overflow-y-auto">
-                    {ingredients.map((ing) => (
-                      <motion.div
-                        key={ing.id}
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="flex items-center justify-between bg-white/10 rounded-lg px-2 py-1 text-xs"
-                      >
-                        <span className="text-white truncate flex-1">{ing.name}</span>
-                        <span className="text-slate-400 ml-1 flex-shrink-0">{ing.quantityInGrams}g</span>
-                        <button
-                          onClick={() => removeIngredient(ing.id)}
-                          className="ml-1 text-slate-500 hover:text-red-400 flex-shrink-0"
-                        >
-                          ×
-                        </button>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
+                <FloatingIngredientNames ingredients={ingredients} />
               )}
 
               {/* Drop indicator */}
@@ -516,7 +495,85 @@ export default function BowlBuilder() {
   );
 }
 
-// ─── Quantity Modal (reused from FoodSearch) ──────────────────────────────────
+// ─── Floating ingredient names inside the bowl circle ────────────────────────
+/**
+ * Takes the first word of each ingredient name and places them at
+ * pseudo-random positions inside the circle using deterministic offsets
+ * derived from the ingredient's index. Each word gently floats up/down
+ * with a staggered Framer Motion animation.
+ */
+function FloatingIngredientNames({ ingredients }) {
+  // Pre-computed positions (% from center) for up to 12 items.
+  // Using a sunflower/spiral pattern so items spread naturally.
+  const positions = [
+    { x:  0,   y: -28 },
+    { x:  24,  y: -12 },
+    { x:  28,  y:  16 },
+    { x:  6,   y:  30 },
+    { x: -24,  y:  20 },
+    { x: -30,  y: -6  },
+    { x: -14,  y: -26 },
+    { x:  18,  y: -24 },
+    { x:  32,  y:  4  },
+    { x:  10,  y:  28 },
+    { x: -20,  y:  28 },
+    { x: -28,  y:  10 },
+  ];
+
+  // Colour palette cycling through macro colours
+  const colours = ["#818cf8", "#22d3ee", "#f59e0b", "#f472b6", "#a78bfa", "#34d399"];
+
+  return (
+    <div className="relative w-full h-full flex items-center justify-center">
+      {/* Bowl emoji anchor */}
+      <span className="text-3xl select-none z-10">🥣</span>
+
+      {ingredients.slice(0, 12).map((ing, i) => {
+        const pos   = positions[i % positions.length];
+        const color = colours[i % colours.length];
+        const firstName = ing.name.split(" ")[0];
+        // Stagger the float phase so items don't all move together
+        const floatDelay = (i * 0.4) % 2;
+
+        return (
+          <motion.span
+            key={ing.id}
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{
+              opacity: 1,
+              scale: 1,
+              y: [0, -6, 0],
+            }}
+            transition={{
+              opacity: { duration: 0.35, delay: i * 0.07 },
+              scale:   { duration: 0.35, delay: i * 0.07, type: "spring", stiffness: 260 },
+              y: {
+                duration: 2.8,
+                delay: floatDelay,
+                repeat: Infinity,
+                ease: "easeInOut",
+              },
+            }}
+            className="absolute text-xs font-bold select-none pointer-events-none"
+            style={{
+              color,
+              left:       `calc(50% + ${pos.x}%)`,
+              top:        `calc(50% + ${pos.y}%)`,
+              transform:  "translate(-50%, -50%)",
+              textShadow: `0 0 12px ${color}80`,
+              whiteSpace: "nowrap",
+              fontSize:   "0.7rem",
+            }}
+          >
+            {firstName}
+          </motion.span>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Quantity Modal ───────────────────────────────────────────────────────────
 function QuantityModal({ isOpen, food, onClose, onConfirm }) {
   const [quantity, setQuantity] = useState("100");
   const [unit, setUnit] = useState("g");

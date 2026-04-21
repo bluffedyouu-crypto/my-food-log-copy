@@ -107,6 +107,11 @@ router.patch("/settings", requireAuth, async (c) => {
       }
     }
 
+    // Reset onboarding flag (re-triggers onboarding flow)
+    if (body.resetOnboarding) {
+      user.onboardingComplete = false;
+    }
+
     // Manual override of targets
     if (body.manualTargets) {
       user.dailyTargets = {
