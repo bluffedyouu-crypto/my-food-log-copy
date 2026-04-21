@@ -56,7 +56,7 @@ const customBowlSchema = new mongoose.Schema(
 );
 
 // Pre-save: recalculate totals from ingredients
-customBowlSchema.pre("save", function (next) {
+customBowlSchema.pre("save", async function () {
   const totals = { calories: 0, protein: 0, carbs: 0, fats: 0, fiber: 0 };
   for (const ing of this.ingredients) {
     totals.calories += ing.nutrition.calories || 0;
@@ -69,7 +69,6 @@ customBowlSchema.pre("save", function (next) {
   this.totals = Object.fromEntries(
     Object.entries(totals).map(([k, v]) => [k, +v.toFixed(1)])
   );
-  next();
 });
 
 module.exports = mongoose.model("CustomBowl", customBowlSchema);

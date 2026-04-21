@@ -22,38 +22,45 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #0B0F19;
-}
-::-webkit-scrollbar-thumb {
-  background: #243352;
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #6366f1;
-}
+/* ─── Scrollbar ──────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.3); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(99,102,241,0.6); }
 
-/* Frosted glass utility */
+/* ─── Glass cards ────────────────────────────────────────────────────────────── */
 .glass {
-  background: rgba(17, 24, 39, 0.7);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(99, 102, 241, 0.15);
+  background: rgba(22, 24, 45, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 }
 
 .glass-strong {
-  background: rgba(11, 15, 25, 0.85);
+  background: rgba(13, 15, 30, 0.85);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(99, 102, 241, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
 }
 
-/* Gradient text */
+.glass-card {
+  background: rgba(22, 24, 45, 0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.glass-card:hover {
+  border-color: rgba(99, 102, 241, 0.25);
+  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(99,102,241,0.15);
+  transform: translateY(-2px);
+}
+
+/* ─── Gradient text ──────────────────────────────────────────────────────────── */
 .gradient-text {
   background: linear-gradient(135deg, #818cf8, #a78bfa);
   -webkit-background-clip: text;
@@ -61,22 +68,41 @@ body {
   background-clip: text;
 }
 
-/* Glow effects */
-.glow-accent {
-  box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+/* ─── Glow helpers ───────────────────────────────────────────────────────────── */
+.glow-indigo  { box-shadow: 0 0 24px rgba(99,102,241,0.35); }
+.glow-cyan    { box-shadow: 0 0 24px rgba(34,211,238,0.3); }
+.glow-amber   { box-shadow: 0 0 24px rgba(245,158,11,0.3); }
+.glow-pink    { box-shadow: 0 0 24px rgba(244,114,182,0.3); }
+
+/* ─── Linear progress bar ────────────────────────────────────────────────────── */
+.progress-track {
+  height: 6px;
+  border-radius: 99px;
+  background: rgba(255,255,255,0.06);
+  overflow: hidden;
 }
 
-.glow-accent-sm {
-  box-shadow: 0 0 10px rgba(99, 102, 241, 0.2);
+.progress-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 1s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* Input focus ring */
-input:focus, textarea:focus, select:focus {
-  outline: none;
+/* ─── Horizontal scroll strip ────────────────────────────────────────────────── */
+.scroll-strip {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scrollbar-width: none;
 }
+.scroll-strip::-webkit-scrollbar { display: none; }
 
-/* Drag over state */
+/* ─── Input focus ────────────────────────────────────────────────────────────── */
+input:focus, textarea:focus, select:focus { outline: none; }
+
+/* ─── Drag over ──────────────────────────────────────────────────────────────── */
 .drag-over {
   border-color: #6366f1 !important;
-  box-shadow: 0 0 30px rgba(99, 102, 241, 0.4) !important;
+  box-shadow: 0 0 30px rgba(99,102,241,0.4) !important;
 }

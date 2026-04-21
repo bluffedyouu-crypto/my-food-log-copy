@@ -111,7 +111,7 @@ const dailyLogSchema = new mongoose.Schema(
 dailyLogSchema.index({ userId: 1, dateString: 1 }, { unique: true });
 
 // Pre-save: recalculate totals and per-meal totals
-dailyLogSchema.pre("save", function (next) {
+dailyLogSchema.pre("save", async function () {
   const totals = { calories: 0, protein: 0, carbs: 0, fats: 0, fiber: 0, sodium: 0 };
   const mealTotals = {};
 
@@ -138,7 +138,6 @@ dailyLogSchema.pre("save", function (next) {
     Object.entries(totals).map(([k, v]) => [k, +v.toFixed(1)])
   );
   this.mealTotals = mealTotals;
-  next();
 });
 
 module.exports = mongoose.model("DailyLog", dailyLogSchema);
