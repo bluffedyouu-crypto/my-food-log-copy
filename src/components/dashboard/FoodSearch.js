@@ -4,16 +4,9 @@ import { foodApi } from "../../api/client";
 import { useLog } from "../../context/LogContext";
 import Modal from "../ui/Modal";
 import Button from "../ui/Button";
+import { MEAL_LABEL_MAP } from "../../constants/meals";
 
-const MEAL_LABELS = {
-  early_fuel: "Early Fuel",
-  daybreak_nourish: "Daybreak Nourish",
-  morning_boost: "Morning Boost",
-  midday_reset: "Midday Reset",
-  afternoon_graze: "Afternoon Graze",
-  evening_fuel: "Evening Fuel",
-  twilight_graze: "Twilight Graze",
-};
+const MEAL_LABELS = MEAL_LABEL_MAP;
 
 export default function FoodSearch({ selectedMeal, onClose, onLogged }) {
   const { addEntry } = useLog();

@@ -497,76 +497,87 @@ export default function BowlBuilder() {
 
 // ─── Floating ingredient names inside the bowl circle ────────────────────────
 /**
- * Takes the first word of each ingredient name and places them at
- * pseudo-random positions inside the circle using deterministic offsets
- * derived from the ingredient's index. Each word gently floats up/down
- * with a staggered Framer Motion animation.
+ * Displays the FULL name of each ingredient floating inside the circle.
+ *
+ * Boundary constraint: positions are expressed as % offsets from center.
+ * The circle radius is 50% of the container. Each label is given a fixed
+ * max-width so it cannot overflow the circle boundary. Text that is too
+ * long is truncated with an ellipsis via CSS.
+ *
+ * Overlap handling: items are placed on a deterministic spiral so they
+ * spread evenly. With many items the font shrinks slightly.
  */
 function FloatingIngredientNames({ ingredients }) {
-  // Pre-computed positions (% from center) for up to 12 items.
-  // Using a sunflower/spiral pattern so items spread naturally.
+  // Spiral positions — (x, y) as % of container width/height from center.
+  // Kept well inside the circle (max ~32% from center so labels stay inside
+  // the ~50% radius boundary even accounting for label width).
   const positions = [
-    { x:  0,   y: -28 },
-    { x:  24,  y: -12 },
-    { x:  28,  y:  16 },
-    { x:  6,   y:  30 },
-    { x: -24,  y:  20 },
-    { x: -30,  y: -6  },
-    { x: -14,  y: -26 },
-    { x:  18,  y: -24 },
-    { x:  32,  y:  4  },
-    { x:  10,  y:  28 },
-    { x: -20,  y:  28 },
-    { x: -28,  y:  10 },
+    { x:  0,   y: -30 },
+    { x:  22,  y: -16 },
+    { x:  26,  y:  12 },
+    { x:  4,   y:  28 },
+    { x: -22,  y:  18 },
+    { x: -28,  y:  -8 },
+    { x: -12,  y: -28 },
+    { x:  16,  y: -26 },
+    { x:  28,  y:   2 },
+    { x:   8,  y:  26 },
+    { x: -18,  y:  26 },
+    { x: -26,  y:   8 },
   ];
 
-  // Colour palette cycling through macro colours
   const colours = ["#818cf8", "#22d3ee", "#f59e0b", "#f472b6", "#a78bfa", "#34d399"];
 
+  // Shrink font slightly when there are many items
+  const fontSize = ingredients.length > 6 ? "0.6rem" : "0.68rem";
+
   return (
-    <div className="relative w-full h-full flex items-center justify-center">
+    <div className="relative w-full h-full flex items-center justify-center overflow-hidden rounded-full">
       {/* Bowl emoji anchor */}
-      <span className="text-3xl select-none z-10">🥣</span>
+      <span className="text-3xl select-none z-10 pointer-events-none">🥣</span>
 
       {ingredients.slice(0, 12).map((ing, i) => {
-        const pos   = positions[i % positions.length];
-        const color = colours[i % colours.length];
-        const firstName = ing.name.split(" ")[0];
-        // Stagger the float phase so items don't all move together
+        const pos        = positions[i % positions.length];
+        const color      = colours[i % colours.length];
         const floatDelay = (i * 0.4) % 2;
 
         return (
-          <motion.span
+          <motion.div
             key={ing.id}
             initial={{ opacity: 0, scale: 0.5 }}
-            animate={{
-              opacity: 1,
-              scale: 1,
-              y: [0, -6, 0],
-            }}
+            animate={{ opacity: 1, scale: 1, y: [0, -5, 0] }}
             transition={{
               opacity: { duration: 0.35, delay: i * 0.07 },
               scale:   { duration: 0.35, delay: i * 0.07, type: "spring", stiffness: 260 },
-              y: {
-                duration: 2.8,
-                delay: floatDelay,
-                repeat: Infinity,
-                ease: "easeInOut",
-              },
+              y: { duration: 2.8, delay: floatDelay, repeat: Infinity, ease: "easeInOut" },
             }}
-            className="absolute text-xs font-bold select-none pointer-events-none"
+            className="absolute pointer-events-none select-none"
             style={{
-              color,
-              left:       `calc(50% + ${pos.x}%)`,
-              top:        `calc(50% + ${pos.y}%)`,
-              transform:  "translate(-50%, -50%)",
-              textShadow: `0 0 12px ${color}80`,
-              whiteSpace: "nowrap",
-              fontSize:   "0.7rem",
+              left:      `calc(50% + ${pos.x}%)`,
+              top:       `calc(50% + ${pos.y}%)`,
+              transform: "translate(-50%, -50%)",
+              // Max width keeps the label inside the circle boundary
+              maxWidth:  "28%",
             }}
           >
-            {firstName}
-          </motion.span>
+            <span
+              style={{
+                display:      "block",
+                color,
+                fontSize,
+                fontWeight:   700,
+                lineHeight:   1.2,
+                textShadow:   `0 0 10px ${color}80`,
+                // Ellipsis for long names
+                whiteSpace:   "nowrap",
+                overflow:     "hidden",
+                textOverflow: "ellipsis",
+                maxWidth:     "100%",
+              }}
+            >
+              {ing.name}
+            </span>
+          </motion.div>
         );
       })}
     </div>

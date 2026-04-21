@@ -12,6 +12,7 @@ const userRoutes = require("./routes/users");
 const foodRoutes = require("./routes/food");
 const logRoutes = require("./routes/logs");
 const bowlRoutes = require("./routes/bowls");
+const activityRoutes = require("./routes/activity");
 
 const app = new Hono();
 
@@ -49,6 +50,7 @@ app.route("/api/users", userRoutes);
 app.route("/api/food", foodRoutes);
 app.route("/api/logs", logRoutes);
 app.route("/api/bowls", bowlRoutes);
+app.route("/api/activity", activityRoutes);
 
 // ─── 404 Handler ─────────────────────────────────────────────────────────────
 app.notFound((c) => c.json({ error: "Route not found" }, 404));

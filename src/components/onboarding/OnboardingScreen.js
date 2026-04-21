@@ -39,11 +39,17 @@ const STEPS = [
     subtitle: "This shapes your entire nutritional blueprint.",
     type: "choice",
     options: [
-      { value: "fat_loss", label: "Fat Loss", emoji: "🔥", desc: "Caloric deficit, high protein" },
+      { value: "fat_loss",    label: "Fat Loss",         emoji: "🔥", desc: "Caloric deficit, high protein" },
       { value: "muscle_gain", label: "Lean Muscle Gain", emoji: "💪", desc: "Caloric surplus, balanced macros" },
-      { value: "recomp", label: "Body Recomp", emoji: "⚡", desc: "Maintain weight, change composition" },
-      { value: "maintenance", label: "Maintenance", emoji: "🎯", desc: "Sustain current physique" },
+      { value: "recomp",      label: "Body Recomp",      emoji: "⚡", desc: "Maintain weight, change composition" },
+      { value: "maintenance", label: "Maintenance",      emoji: "🎯", desc: "Sustain current physique" },
     ],
+  },
+  {
+    id: "units",
+    title: "Your preferred units.",
+    subtitle: "We'll use these everywhere — you'll never be asked again.",
+    type: "units",
   },
   {
     id: "metrics",
@@ -57,10 +63,10 @@ const STEPS = [
     subtitle: "Be honest — this directly impacts your calorie target.",
     type: "choice",
     options: [
-      { value: "sedentary", label: "Sedentary", emoji: "🛋️", desc: "Desk job, little to no exercise" },
-      { value: "lightly_active", label: "Lightly Active", emoji: "🚶", desc: "Light exercise 1–3 days/week" },
-      { value: "moderately_active", label: "Moderately Active", emoji: "🏋️", desc: "Gym 3–5 days/week" },
-      { value: "very_active", label: "Very Active", emoji: "🏃", desc: "Hard training 6–7 days/week" },
+      { value: "sedentary",          label: "Sedentary",          emoji: "🛋️", desc: "Desk job, little to no exercise" },
+      { value: "lightly_active",     label: "Lightly Active",     emoji: "🚶", desc: "Light exercise 1–3 days/week" },
+      { value: "moderately_active",  label: "Moderately Active",  emoji: "🏋️", desc: "Gym 3–5 days/week" },
+      { value: "very_active",        label: "Very Active",        emoji: "🏃", desc: "Hard training 6–7 days/week" },
     ],
   },
   {
@@ -99,6 +105,7 @@ export default function OnboardingScreen() {
 
   const canProceed = () => {
     if (currentStep.id === "goal") return !!answers.goal;
+    if (currentStep.id === "units") return !!answers.weightUnit && !!answers.heightUnit;
     if (currentStep.id === "metrics") {
       return answers.age && answers.currentWeight && answers.height && answers.gender;
     }
@@ -186,6 +193,10 @@ export default function OnboardingScreen() {
                 value={answers[currentStep.id]}
                 onChange={(v) => setAnswer(currentStep.id, v)}
               />
+            )}
+
+            {currentStep.type === "units" && (
+              <UnitsStep answers={answers} setAnswer={setAnswer} />
             )}
 
             {currentStep.type === "metrics" && (
@@ -290,7 +301,92 @@ function ChoiceStep({ options, value, onChange }) {
   );
 }
 
+function UnitsStep({ answers, setAnswer }) {
+  return (
+    <div className="space-y-6">
+      {/* Weight unit */}
+      <div>
+        <p className="text-sm font-medium text-slate-300 mb-3">Preferred Weight Unit</p>
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { value: "kg",  label: "Kilograms", sub: "kg", emoji: "🌍" },
+            { value: "lbs", label: "Pounds",    sub: "lbs", emoji: "🇺🇸" },
+          ].map((opt) => (
+            <motion.button
+              key={opt.value}
+              onClick={() => setAnswer("weightUnit", opt.value)}
+              whileTap={{ scale: 0.97 }}
+              className={`flex items-center gap-4 p-4 rounded-2xl border text-left transition-all ${
+                answers.weightUnit === opt.value
+                  ? "border-indigo-500 bg-indigo-500/15"
+                  : "border-white/10 bg-white/3 hover:border-white/20"
+              }`}
+            >
+              <span className="text-2xl">{opt.emoji}</span>
+              <div>
+                <p className={`font-semibold ${answers.weightUnit === opt.value ? "text-indigo-300" : "text-white"}`}>
+                  {opt.label}
+                </p>
+                <p className="text-sm text-slate-500">{opt.sub}</p>
+              </div>
+              {answers.weightUnit === opt.value && (
+                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
+                  className="ml-auto w-5 h-5 rounded-full bg-indigo-500 flex items-center justify-center">
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </motion.div>
+              )}
+            </motion.button>
+          ))}
+        </div>
+      </div>
+
+      {/* Height unit */}
+      <div>
+        <p className="text-sm font-medium text-slate-300 mb-3">Preferred Height Unit</p>
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { value: "cm", label: "Centimetres", sub: "cm",   emoji: "📏" },
+            { value: "ft", label: "Feet / Inches", sub: "ft/in", emoji: "📐" },
+          ].map((opt) => (
+            <motion.button
+              key={opt.value}
+              onClick={() => setAnswer("heightUnit", opt.value)}
+              whileTap={{ scale: 0.97 }}
+              className={`flex items-center gap-4 p-4 rounded-2xl border text-left transition-all ${
+                answers.heightUnit === opt.value
+                  ? "border-indigo-500 bg-indigo-500/15"
+                  : "border-white/10 bg-white/3 hover:border-white/20"
+              }`}
+            >
+              <span className="text-2xl">{opt.emoji}</span>
+              <div>
+                <p className={`font-semibold ${answers.heightUnit === opt.value ? "text-indigo-300" : "text-white"}`}>
+                  {opt.label}
+                </p>
+                <p className="text-sm text-slate-500">{opt.sub}</p>
+              </div>
+              {answers.heightUnit === opt.value && (
+                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
+                  className="ml-auto w-5 h-5 rounded-full bg-indigo-500 flex items-center justify-center">
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </motion.div>
+              )}
+            </motion.button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MetricsStep({ answers, setAnswer }) {
+  const wUnit = answers.weightUnit || "kg";
+  const hUnit = answers.heightUnit || "cm";
+
   return (
     <div className="space-y-4">
       {/* Gender */}
@@ -313,7 +409,7 @@ function MetricsStep({ answers, setAnswer }) {
         </div>
       </div>
 
-      {/* Age */}
+      {/* Age + Height */}
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="text-sm font-medium text-slate-300 mb-1.5 block">Age</label>
@@ -326,57 +422,42 @@ function MetricsStep({ answers, setAnswer }) {
           />
         </div>
 
-        {/* Height */}
         <div>
-          <label className="text-sm font-medium text-slate-300 mb-1.5 block">Height</label>
-          <div className="flex gap-2">
-            <input
-              type="number"
-              placeholder={answers.heightUnit === "cm" ? "175" : "5.9"}
-              value={answers.height}
-              onChange={(e) => setAnswer("height", e.target.value)}
-              className="flex-1 px-4 py-3 rounded-xl bg-[#111827] border border-white/10 text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
-            />
-            <select
-              value={answers.heightUnit}
-              onChange={(e) => setAnswer("heightUnit", e.target.value)}
-              className="px-2 py-3 rounded-xl bg-[#111827] border border-white/10 text-slate-300 focus:border-indigo-500 transition-all"
-            >
-              <option value="cm">cm</option>
-              <option value="ft">ft</option>
-            </select>
-          </div>
+          <label className="text-sm font-medium text-slate-300 mb-1.5 block">
+            Height <span className="text-slate-500 font-normal">({hUnit})</span>
+          </label>
+          <input
+            type="number"
+            placeholder={hUnit === "cm" ? "175" : "5.9"}
+            value={answers.height}
+            onChange={(e) => setAnswer("height", e.target.value)}
+            className="w-full px-4 py-3 rounded-xl bg-[#111827] border border-white/10 text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+          />
         </div>
       </div>
 
-      {/* Weight */}
+      {/* Current + Target Weight */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="text-sm font-medium text-slate-300 mb-1.5 block">Current Weight</label>
-          <div className="flex gap-2">
-            <input
-              type="number"
-              placeholder={answers.weightUnit === "kg" ? "75" : "165"}
-              value={answers.currentWeight}
-              onChange={(e) => setAnswer("currentWeight", e.target.value)}
-              className="flex-1 px-4 py-3 rounded-xl bg-[#111827] border border-white/10 text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
-            />
-            <select
-              value={answers.weightUnit}
-              onChange={(e) => setAnswer("weightUnit", e.target.value)}
-              className="px-2 py-3 rounded-xl bg-[#111827] border border-white/10 text-slate-300 focus:border-indigo-500 transition-all"
-            >
-              <option value="kg">kg</option>
-              <option value="lbs">lbs</option>
-            </select>
-          </div>
+          <label className="text-sm font-medium text-slate-300 mb-1.5 block">
+            Current Weight <span className="text-slate-500 font-normal">({wUnit})</span>
+          </label>
+          <input
+            type="number"
+            placeholder={wUnit === "kg" ? "75" : "165"}
+            value={answers.currentWeight}
+            onChange={(e) => setAnswer("currentWeight", e.target.value)}
+            className="w-full px-4 py-3 rounded-xl bg-[#111827] border border-white/10 text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+          />
         </div>
 
         <div>
-          <label className="text-sm font-medium text-slate-300 mb-1.5 block">Target Weight</label>
+          <label className="text-sm font-medium text-slate-300 mb-1.5 block">
+            Target Weight <span className="text-slate-500 font-normal">({wUnit})</span>
+          </label>
           <input
             type="number"
-            placeholder={answers.weightUnit === "kg" ? "70" : "155"}
+            placeholder={wUnit === "kg" ? "70" : "155"}
             value={answers.targetWeight}
             onChange={(e) => setAnswer("targetWeight", e.target.value)}
             className="w-full px-4 py-3 rounded-xl bg-[#111827] border border-white/10 text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
@@ -390,10 +471,10 @@ function MetricsStep({ answers, setAnswer }) {
 function FrequencyStep({ value, onChange }) {
   const options = [3, 4, 5, 6];
   const mealNames = {
-    3: ["Daybreak Nourish", "Midday Reset", "Evening Fuel"],
-    4: ["Early Fuel", "Daybreak Nourish", "Midday Reset", "Evening Fuel"],
-    5: ["Early Fuel", "Daybreak Nourish", "Morning Boost", "Midday Reset", "Evening Fuel"],
-    6: ["Early Fuel", "Daybreak Nourish", "Morning Boost", "Midday Reset", "Afternoon Graze", "Evening Fuel"],
+    3: ["Breakfast", "Lunch", "Dinner"],
+    4: ["Early Fuel", "Breakfast", "Lunch", "Dinner"],
+    5: ["Early Fuel", "Breakfast", "Morning Snack", "Lunch", "Dinner"],
+    6: ["Early Fuel", "Breakfast", "Morning Snack", "Lunch", "Afternoon Graze", "Dinner"],
   };
 
   return (

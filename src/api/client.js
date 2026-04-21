@@ -61,6 +61,13 @@ export const logsApi = {
   getAnalytics: (days = 30) => client.get(`/api/logs/analytics/summary?days=${days}`),
 };
 
+// ─── Activity API ─────────────────────────────────────────────────────────────
+export const activityApi = {
+  getWeek: () => client.get("/api/activity/week"),
+  log: (data) => client.post("/api/activity", data),
+  delete: (id) => client.delete(`/api/activity/${id}`),
+};
+
 // ─── Bowls API ────────────────────────────────────────────────────────────────
 export const bowlsApi = {
   getAll: () => client.get("/api/bowls"),
