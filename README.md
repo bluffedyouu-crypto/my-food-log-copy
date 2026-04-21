@@ -1,70 +1,137 @@
-# Getting Started with Create React App
+# 🥗 MacroSpace — Diet & Macro Tracker
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A modern, highly interactive diet and macro tracking web application with a "Deep Space" dark UI, animated onboarding, drag-and-drop meal builder, and real-time progress visualization.
 
-## Available Scripts
+## Tech Stack
 
-In the project directory, you can run:
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 19, Tailwind CSS 3, Framer Motion |
+| Drag & Drop | dnd-kit |
+| Charts | Recharts |
+| Backend | Hono (Node.js adapter) |
+| Auth | Better Auth (email/password + Google OAuth) |
+| Database | MongoDB + Mongoose |
+| Food API | USDA FoodData Central → Open Food Facts → MongoDB fallback |
 
-### `npm start`
+## Getting Started
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+### Prerequisites
+- Node.js 18+
+- MongoDB running locally (or a MongoDB Atlas URI)
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+### 1. Install dependencies
 
-### `npm test`
+```bash
+# Frontend deps
+npm install
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+# Backend deps
+npm install --prefix server
+```
 
-### `npm run build`
+### 2. Configure environment
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+Copy and edit the server env file:
+```bash
+cp server/.env.example server/.env
+```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+Edit `server/.env`:
+```env
+MONGODB_URI=mongodb://localhost:27017/macrotracker
+BETTER_AUTH_SECRET=your-long-random-secret
+BETTER_AUTH_URL=http://localhost:5000
+GOOGLE_CLIENT_ID=your-google-client-id       # optional
+GOOGLE_CLIENT_SECRET=your-google-client-secret  # optional
+USDA_API_KEY=DEMO_KEY                         # or get a free key at api.nal.usda.gov
+PORT=5000
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Edit `.env` (frontend):
+```env
+REACT_APP_API_URL=http://localhost:5000
+```
 
-### `npm run eject`
+### 3. Run in development
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+```bash
+# Run both frontend and backend concurrently
+npm run dev
+```
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+Or separately:
+```bash
+npm run server:dev   # Hono backend on :5000
+npm start            # React frontend on :3000
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+## Features
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+### 🎯 Animated Onboarding
+4-step animated flow (Framer Motion fade-in) collecting:
+- Primary goal (Fat Loss / Muscle Gain / Recomp / Maintenance)
+- Body metrics (age, weight, height, gender)
+- Activity level
+- Meal frequency (3–6 meals)
 
-## Learn More
+Automatically calculates daily calorie target and macro splits using the **Mifflin-St Jeor** formula.
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+### 📊 Dashboard
+- Animated circular progress rings for Calories, Protein, Carbs, Fats
+- 7 trendy meal categories (Early Fuel → Twilight Graze)
+- Real-time food search (USDA API with fallback)
+- One-click Custom Bowl logging
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+### 🥣 Custom Bowl Builder
+- Drag food items from a searchable sidebar into an interactive bowl graphic
+- Frosted-glass quantity modal on drop
+- Live nutrition totals
+- Save named bowls for reuse
 
-### Code Splitting
+### 📈 Analytics
+- 7/14/30-day calorie adherence bar chart
+- Macro trend line chart
+- Weight trend line chart with goal reference line
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+### ⚙️ Settings
+- Update goals, weight, activity level
+- Manual macro target override
+- Weight logging
 
-### Analyzing the Bundle Size
+## Project Structure
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+```
+my-food-log/
+├── src/                  # React frontend
+│   ├── api/              # Axios API client
+│   ├── components/       # UI components by feature
+│   ├── context/          # Auth + Log React contexts
+│   └── App.js            # Router + route guards
+└── server/               # Hono backend
+    ├── models/           # Mongoose schemas
+    ├── routes/           # API route handlers
+    ├── utils/            # Macro calculator + food parser
+    ├── auth.js           # Better Auth setup
+    └── index.js          # Server entry point
+```
 
-### Making a Progressive Web App
+## API Endpoints
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET/POST` | `/api/auth/**` | Better Auth (sign-in, sign-up, session) |
+| `GET` | `/api/users/me` | Get current user profile |
+| `POST` | `/api/users/onboarding` | Complete onboarding + calculate targets |
+| `PATCH` | `/api/users/settings` | Update settings / override targets |
+| `GET` | `/api/food/search?q=` | Search food (USDA → OFF → cache) |
+| `GET` | `/api/logs/today` | Get today's log |
+| `POST` | `/api/logs/entry` | Add food entry |
+| `DELETE` | `/api/logs/entry/:id` | Remove food entry |
+| `GET` | `/api/logs/analytics/summary` | Analytics data |
+| `GET/POST` | `/api/bowls` | List / create custom bowls |
+| `PATCH/DELETE` | `/api/bowls/:id` | Update / delete bowl |
 
-### Advanced Configuration
+## USDA API Key
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+The app uses `DEMO_KEY` by default (limited to 30 requests/hour). Get a free key at [api.nal.usda.gov](https://api.nal.usda.gov/signup) for 1000 requests/hour.

@@ -1,0 +1,22 @@
+{
+  "name": "macro-tracker-server",
+  "version": "1.0.0",
+  "description": "Hono + Better Auth backend for the Diet & Macro Tracker",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.0.0",
+    "axios": "^1.15.1",
+    "better-auth": "^1.6.5",
+    "dotenv": "^17.4.2",
+    "hono": "^4.12.14",
+    "mongodb": "^7.2.0",
+    "mongoose": "^9.5.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}

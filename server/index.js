@@ -1,0 +1,79 @@
+require("dotenv").config({ path: __dirname + "/.env" });
+
+const { serve } = require("@hono/node-server");
+const { Hono } = require("hono");
+const { cors } = require("hono/cors");
+const { logger } = require("hono/logger");
+const { connectDB, getMongoDb } = require("./db");
+const { createAuth } = require("./auth");
+
+// Route handlers
+const userRoutes = require("./routes/users");
+const foodRoutes = require("./routes/food");
+const logRoutes = require("./routes/logs");
+const bowlRoutes = require("./routes/bowls");
+
+const app = new Hono();
+
+// ─── Global Middleware ────────────────────────────────────────────────────────
+app.use("*", logger());
+
+app.use(
+  "*",
+  cors({
+    origin: [
+      "http://localhost:3000",
+      process.env.FRONTEND_URL,
+    ].filter(Boolean),
+    allowHeaders: ["Content-Type", "Authorization", "Cookie"],
+    allowMethods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+    exposeHeaders: ["Set-Cookie"],
+    credentials: true,
+    maxAge: 600,
+  })
+);
+
+// ─── Health Check ─────────────────────────────────────────────────────────────
+app.get("/health", (c) => c.json({ status: "ok", timestamp: new Date().toISOString() }));
+
+// ─── Better Auth Handler ──────────────────────────────────────────────────────
+// Mount at /api/auth/* — Better Auth handles all auth routes
+app.on(["GET", "POST"], "/api/auth/**", async (c) => {
+  const { getAuth } = require("./auth");
+  const auth = getAuth();
+  return auth.handler(c.req.raw);
+});
+
+// ─── API Routes ───────────────────────────────────────────────────────────────
+app.route("/api/users", userRoutes);
+app.route("/api/food", foodRoutes);
+app.route("/api/logs", logRoutes);
+app.route("/api/bowls", bowlRoutes);
+
+// ─── 404 Handler ─────────────────────────────────────────────────────────────
+app.notFound((c) => c.json({ error: "Route not found" }, 404));
+
+// ─── Error Handler ────────────────────────────────────────────────────────────
+app.onError((err, c) => {
+  console.error("Unhandled error:", err);
+  return c.json({ error: "Internal server error", message: err.message }, 500);
+});
+
+// ─── Bootstrap ───────────────────────────────────────────────────────────────
+async function bootstrap() {
+  try {
+    const { mongoDb } = await connectDB();
+    createAuth(mongoDb);
+    console.log("✅ Better Auth initialized");
+
+    const port = parseInt(process.env.PORT || "5000");
+    serve({ fetch: app.fetch, port }, (info) => {
+      console.log(`🚀 Hono server running on http://localhost:${info.port}`);
+    });
+  } catch (err) {
+    console.error("❌ Failed to start server:", err);
+    process.exit(1);
+  }
+}
+
+bootstrap();
