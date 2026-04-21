@@ -37,8 +37,8 @@ app.use(
 app.get("/health", (c) => c.json({ status: "ok", timestamp: new Date().toISOString() }));
 
 // ─── Better Auth Handler ──────────────────────────────────────────────────────
-// Mount at /api/auth/* — Better Auth handles all auth routes
-app.on(["GET", "POST"], "/api/auth/**", async (c) => {
+// Better Auth handles all /api/auth/* routes — must use app.all with wildcard
+app.all("/api/auth/*", async (c) => {
   const { getAuth } = require("./auth");
   const auth = getAuth();
   return auth.handler(c.req.raw);
@@ -66,9 +66,24 @@ async function bootstrap() {
     createAuth(mongoDb);
     console.log("✅ Better Auth initialized");
 
-    const port = parseInt(process.env.PORT || "5000");
-    serve({ fetch: app.fetch, port }, (info) => {
+    const port = parseInt(process.env.PORT || "4000");
+
+    const server = serve({ fetch: app.fetch, port }, (info) => {
       console.log(`🚀 Hono server running on http://localhost:${info.port}`);
+    });
+
+    // Graceful port-conflict error
+    server.on("error", (err) => {
+      if (err.code === "EADDRINUSE") {
+        console.error(
+          `\n❌ Port ${port} is already in use.\n` +
+          `   Run: lsof -ti :${port} | xargs kill -9\n` +
+          `   Or change PORT in server/.env to a free port.\n`
+        );
+      } else {
+        console.error("❌ Server error:", err);
+      }
+      process.exit(1);
     });
   } catch (err) {
     console.error("❌ Failed to start server:", err);
