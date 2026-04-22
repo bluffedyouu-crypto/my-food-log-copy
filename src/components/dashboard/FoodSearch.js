@@ -1,71 +1,94 @@
 import React, { useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { foodApi } from "../../api/client";
 import { useLog } from "../../context/LogContext";
 import Modal from "../ui/Modal";
 import Button from "../ui/Button";
 import { MEAL_LABEL_MAP } from "../../constants/meals";
+import client from "../../api/client";
 
+// Flat label map for the meal selector pills
 const MEAL_LABELS = MEAL_LABEL_MAP;
 
+// ─── Local food search — hits our own MongoDB via /api/food/search ────────────
+async function searchLocalFoods(query) {
+  const { data } = await client.get(
+    `/api/food/search?q=${encodeURIComponent(query)}&limit=20`
+  );
+  return data.foods || [];
+}
+
+// ─── FoodSearch ───────────────────────────────────────────────────────────────
 export default function FoodSearch({ selectedMeal, onClose, onLogged }) {
   const { addEntry } = useLog();
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState([]);
-  const [searching, setSearching] = useState(false);
-  const [sourceWarning, setSourceWarning] = useState("");
-  const [selectedFood, setSelectedFood] = useState(null);
+
+  const [query, setQuery]                   = useState("");
+  const [results, setResults]               = useState([]);
+  const [searching, setSearching]           = useState(false);
+  const [selectedFood, setSelectedFood]     = useState(null);
   const [showQuantityModal, setShowQuantityModal] = useState(false);
-  const [activeMeal, setActiveMeal] = useState(selectedMeal || "daybreak_nourish");
+  const [activeMeal, setActiveMeal]         = useState(selectedMeal || "daybreak_nourish");
+
+  // 300 ms debounce ref
   const debounceRef = useRef(null);
 
+  // ── Search handler ──────────────────────────────────────────────────────────
   const handleSearch = useCallback((value) => {
     setQuery(value);
     clearTimeout(debounceRef.current);
-    if (value.trim().length < 2) { setResults([]); return; }
 
+    if (value.trim().length < 2) {
+      setResults([]);
+      return;
+    }
+
+    // Wait 300 ms after the user stops typing before firing the request
     debounceRef.current = setTimeout(async () => {
       setSearching(true);
-      setSourceWarning("");
       try {
-        const { data } = await foodApi.search(value);
-        setResults(data.foods || []);
-        if (data.warning) setSourceWarning(data.warning);
-      } catch (err) {
+        const foods = await searchLocalFoods(value.trim());
+        setResults(foods);
+      } catch {
         setResults([]);
       } finally {
         setSearching(false);
       }
-    }, 400);
+    }, 300);
   }, []);
 
+  // ── Select a result ─────────────────────────────────────────────────────────
   const handleSelectFood = (food) => {
     setSelectedFood(food);
     setShowQuantityModal(true);
   };
 
+  // ── Confirm quantity and log ────────────────────────────────────────────────
   const handleLogFood = async ({ quantity, unit }) => {
     if (!selectedFood) return;
+
+    // per100g is already normalised by the backend's normaliseFoodDoc()
     await addEntry({
-      fdcId: selectedFood.fdcId,
-      name: selectedFood.name,
-      brand: selectedFood.brand,
+      foodItemId:  selectedFood._id,
+      name:        selectedFood.name,
+      brand:       selectedFood.brand || undefined,
       mealCategory: activeMeal,
       quantity,
       unit,
-      per100g: selectedFood.per100g,
+      per100g:     selectedFood.per100g,
       servingSize: selectedFood.servingSize || 100,
     });
+
     setShowQuantityModal(false);
     setSelectedFood(null);
     onLogged?.();
   };
 
+  // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <>
       <div className="glass rounded-2xl p-4">
-        {/* Meal selector */}
-        <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
+
+        {/* Meal selector pills */}
+        <div className="flex gap-2 mb-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
           {Object.entries(MEAL_LABELS).map(([key, label]) => (
             <button
               key={key}
@@ -83,13 +106,17 @@ export default function FoodSearch({ selectedMeal, onClose, onLogged }) {
 
         {/* Search input */}
         <div className="relative">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          <svg
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"
+            fill="none" viewBox="0 0 24 24" stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <input
             autoFocus
             type="text"
-            placeholder={`Search food to add to ${MEAL_LABELS[activeMeal]}...`}
+            placeholder={`Search food to add to ${MEAL_LABELS[activeMeal]}…`}
             value={query}
             onChange={(e) => handleSearch(e.target.value)}
             className="w-full pl-10 pr-10 py-3 rounded-xl bg-[#111827] border border-white/10 text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
@@ -100,20 +127,14 @@ export default function FoodSearch({ selectedMeal, onClose, onLogged }) {
               className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           )}
         </div>
 
-        {/* Warning */}
-        {sourceWarning && (
-          <p className="text-xs text-amber-400 mt-2 flex items-center gap-1">
-            <span>⚠️</span> {sourceWarning}
-          </p>
-        )}
-
-        {/* Results */}
+        {/* Results list */}
         <AnimatePresence>
           {searching && (
             <div className="flex items-center justify-center py-6">
@@ -127,52 +148,78 @@ export default function FoodSearch({ selectedMeal, onClose, onLogged }) {
               animate={{ opacity: 1, y: 0 }}
               className="mt-3 space-y-1 max-h-64 overflow-y-auto"
             >
-              {results.map((food, i) => (
-                <motion.button
-                  key={food.fdcId || food.openFoodFactsId || i}
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.03 }}
-                  onClick={() => handleSelectFood(food)}
-                  className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-all text-left group"
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white truncate">{food.name}</p>
-                    {food.brand && <p className="text-xs text-slate-500 truncate">{food.brand}</p>}
-                  </div>
-                  <div className="flex items-center gap-3 ml-3 flex-shrink-0">
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-indigo-400">{food.per100g?.calories || 0}</p>
-                      <p className="text-xs text-slate-500">kcal/100g</p>
+              {results.map((food, i) => {
+                // per100g is the normalised flat object from normaliseFoodDoc()
+                const p = food.per100g || {};
+
+                return (
+                  <motion.button
+                    key={food._id || food.id || i}
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.025 }}
+                    onClick={() => handleSelectFood(food)}
+                    className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-all text-left group"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-white truncate">{food.name}</p>
                     </div>
-                    <div className="hidden group-hover:flex items-center gap-1 text-xs text-slate-400">
-                      <span className="text-cyan-400">P:{food.per100g?.protein || 0}g</span>
-                      <span className="text-amber-400">C:{food.per100g?.carbs || 0}g</span>
-                      <span className="text-pink-400">F:{food.per100g?.fats || 0}g</span>
+
+                    <div className="flex items-center gap-3 ml-3 flex-shrink-0">
+                      {/* Calorie badge — always visible */}
+                      <div className="text-right">
+                        <p className="text-sm font-semibold text-indigo-400">
+                          {Math.round(p.calories || 0)}
+                        </p>
+                        <p className="text-xs text-slate-500">kcal/100g</p>
+                      </div>
+
+                      {/* Macro detail — visible on hover */}
+                      <div className="hidden group-hover:flex items-center gap-1 text-xs">
+                        <span className="text-cyan-400">
+                          P:{Math.round(p.protein || 0)}g
+                        </span>
+                        <span className="text-amber-400">
+                          C:{Math.round(p.carbs || 0)}g
+                        </span>
+                        <span className="text-pink-400">
+                          F:{Math.round(p.fats || 0)}g
+                        </span>
+                      </div>
+
+                      <svg
+                        className="w-4 h-4 text-slate-500 group-hover:text-indigo-400 transition-colors"
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                          d="M12 4v16m8-8H4" />
+                      </svg>
                     </div>
-                    <svg className="w-4 h-4 text-slate-500 group-hover:text-indigo-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                  </div>
-                </motion.button>
-              ))}
+                  </motion.button>
+                );
+              })}
             </motion.div>
           )}
 
           {!searching && query.length >= 2 && results.length === 0 && (
-            <p className="text-center text-slate-500 text-sm py-6">No results found for "{query}"</p>
+            <p className="text-center text-slate-500 text-sm py-6">
+              No results found for &ldquo;{query}&rdquo;
+            </p>
           )}
         </AnimatePresence>
 
         {/* Close */}
         <div className="flex justify-end mt-3">
-          <button onClick={onClose} className="text-xs text-slate-500 hover:text-slate-300 transition-colors">
+          <button
+            onClick={onClose}
+            className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+          >
             Close search
           </button>
         </div>
       </div>
 
-      {/* Quantity Modal */}
+      {/* Quantity + nutrition preview modal */}
       <QuantityModal
         isOpen={showQuantityModal}
         food={selectedFood}
@@ -184,19 +231,23 @@ export default function FoodSearch({ selectedMeal, onClose, onLogged }) {
   );
 }
 
+// ─── Quantity Modal ───────────────────────────────────────────────────────────
 function QuantityModal({ isOpen, food, onClose, onConfirm, mealLabel }) {
   const [quantity, setQuantity] = useState("100");
-  const [unit, setUnit] = useState("g");
-  const [logging, setLogging] = useState(false);
+  const [unit, setUnit]         = useState("g");
+  const [logging, setLogging]   = useState(false);
 
   if (!food) return null;
 
+  // Conversion factors to grams
   const gramsMap = { g: 1, oz: 28.3495, serving: food.servingSize || 100 };
-  const grams = parseFloat(quantity || 0) * gramsMap[unit];
-  const factor = grams / 100;
-  const n = food.per100g || {};
+  const grams    = parseFloat(quantity || 0) * (gramsMap[unit] || 1);
+  const factor   = grams / 100;
 
-  const calc = (v) => Math.round((v || 0) * factor * 10) / 10;
+  // per100g is the normalised flat object — read directly
+  const p = food.per100g || {};
+
+  const calc = (v) => +(((v || 0) * factor).toFixed(1));
 
   const handleConfirm = async () => {
     setLogging(true);
@@ -209,10 +260,10 @@ function QuantityModal({ isOpen, food, onClose, onConfirm, mealLabel }) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Add to Log">
       <div className="space-y-4">
-        {/* Food info */}
-        <div className="bg-white/3 rounded-xl p-3">
+
+        {/* Food name */}
+        <div className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.03)" }}>
           <p className="font-semibold text-white">{food.name}</p>
-          {food.brand && <p className="text-xs text-slate-400">{food.brand}</p>}
           <p className="text-xs text-indigo-400 mt-1">→ {mealLabel}</p>
         </div>
 
@@ -239,25 +290,37 @@ function QuantityModal({ isOpen, food, onClose, onConfirm, mealLabel }) {
             </select>
           </div>
           {unit === "serving" && (
-            <p className="text-xs text-slate-500 mt-1">1 serving = {food.servingSize || 100}g</p>
+            <p className="text-xs text-slate-500 mt-1">
+              1 serving = {food.servingSize || 100}g
+            </p>
           )}
         </div>
 
-        {/* Nutrition preview */}
+        {/* Macro preview — reads from normalised per100g */}
         <div className="grid grid-cols-4 gap-2">
           {[
-            { label: "Calories", value: calc(n.calories), unit: "kcal", color: "text-indigo-400" },
-            { label: "Protein", value: calc(n.protein), unit: "g", color: "text-cyan-400" },
-            { label: "Carbs", value: calc(n.carbs), unit: "g", color: "text-amber-400" },
-            { label: "Fats", value: calc(n.fats), unit: "g", color: "text-pink-400" },
+            { label: "Calories", value: calc(p.calories), unit: "kcal", color: "text-indigo-400" },
+            { label: "Protein",  value: calc(p.protein),  unit: "g",    color: "text-cyan-400"   },
+            { label: "Carbs",    value: calc(p.carbs),    unit: "g",    color: "text-amber-400"  },
+            { label: "Fats",     value: calc(p.fats),     unit: "g",    color: "text-pink-400"   },
           ].map((item) => (
-            <div key={item.label} className="bg-white/3 rounded-xl p-2 text-center">
+            <div key={item.label} className="rounded-xl p-2 text-center"
+              style={{ background: "rgba(255,255,255,0.03)" }}>
               <p className={`text-base font-bold ${item.color}`}>{item.value}</p>
               <p className="text-xs text-slate-500">{item.unit}</p>
               <p className="text-xs text-slate-400">{item.label}</p>
             </div>
           ))}
         </div>
+
+        {/* Extended micros — shown if data exists */}
+        {(p.fiber > 0 || p.sodium > 0 || p.sugar > 0) && (
+          <div className="flex gap-3 text-xs text-slate-500 px-1">
+            {p.fiber  > 0 && <span>Fiber: <span className="text-emerald-400">{calc(p.fiber)}g</span></span>}
+            {p.sugar  > 0 && <span>Sugar: <span className="text-pink-400">{calc(p.sugar)}g</span></span>}
+            {p.sodium > 0 && <span>Sodium: <span className="text-orange-400">{calc(p.sodium)}mg</span></span>}
+          </div>
+        )}
 
         <div className="flex gap-3">
           <Button variant="secondary" onClick={onClose} className="flex-1">Cancel</Button>
