@@ -42,6 +42,8 @@ export const userApi = {
   completeOnboarding: (data) => client.post("/api/users/onboarding", data),
   updateSettings: (data) => client.patch("/api/users/settings", data),
   logWeight: (weight, unit, date) => client.post("/api/users/weight", { weight, unit, date }),
+  getWeightForDate: (date) => client.get(`/api/users/weight?date=${date}`),
+  deleteWeightEntry: (entryId) => client.delete(`/api/users/weight/${entryId}`),
 };
 
 // ─── Food API ─────────────────────────────────────────────────────────────────
@@ -64,6 +66,7 @@ export const logsApi = {
 // ─── Activity API ─────────────────────────────────────────────────────────────
 export const activityApi = {
   getWeek: () => client.get("/api/activity/week"),
+  getByDate: (date) => client.get(`/api/activity/date?date=${date}`),
   log: (data) => client.post("/api/activity", data),
   delete: (id) => client.delete(`/api/activity/${id}`),
 };

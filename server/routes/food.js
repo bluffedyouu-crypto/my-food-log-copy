@@ -14,7 +14,6 @@ async function requireAuth(c, next) {
 }
 
 // ─── Normalise a Food document into the flat per100g shape ───────────────────
-// All values are per 100 g. This shape is what logs.js and the frontend expect.
 function normaliseFoodDoc(doc) {
   const m  = doc.macros         || {};
   const v  = doc.vitamins       || {};
@@ -28,19 +27,19 @@ function normaliseFoodDoc(doc) {
     brand: null,
 
     per100g: {
-      calories:       doc.calories_kcal   ?? 0,
-      protein:        m.protein_g         ?? 0,
-      carbs:          m.carbohydrates_g   ?? 0,
-      fats:           m.fat_total_g       ?? 0,
-      fiber:          m.dietary_fiber_g   ?? 0,
-      sugar:          m.sugars_g          ?? 0,
-      sodium:         mn.sodium_mg        ?? 0,
-      potassium:      mn.potassium_mg     ?? 0,
-      calcium:        mn.calcium_mg       ?? 0,
-      iron:           mn.iron_mg          ?? 0,
-      vitaminC:       v.c_mg              ?? 0,
-      saturated:      fb.saturated_g      ?? 0,
-      cholesterol_mg: fb.cholesterol_mg   ?? 0,
+      calories:       doc.calories_kcal ?? 0,
+      protein:        m.protein_g       ?? 0,
+      carbs:          m.carbohydrates_g ?? 0,
+      fats:           m.fat_total_g     ?? 0,
+      fiber:          m.dietary_fiber_g ?? 0,
+      sugar:          m.sugars_g        ?? 0,
+      sodium:         mn.sodium_mg      ?? 0,
+      potassium:      mn.potassium_mg   ?? 0,
+      calcium:        mn.calcium_mg     ?? 0,
+      iron:           mn.iron_mg        ?? 0,
+      vitaminC:       v.c_mg            ?? 0,
+      saturated:      fb.saturated_g    ?? 0,
+      cholesterol_mg: fb.cholesterol_mg ?? 0,
     },
 
     servingSize:        100,
@@ -54,21 +53,43 @@ function normaliseFoodDoc(doc) {
   };
 }
 
-// ─── Escape special regex characters to prevent injection ─────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Escape every special regex metacharacter so user input is treated as a
+ * literal string inside a MongoDB $regex / $regexMatch expression.
+ */
 function escapeRegex(str) {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // Replace each special char with a backslash-escaped version.
+  // The replacement string uses $& (the matched character) prefixed by \\.
+  return str.replace(/[.*+?^${}()|[\]\\]/g, (ch) => "\\" + ch);
 }
 
-// ─── GET /api/food/search?q=chicken&limit=20 ─────────────────────────────────
+/**
+ * Strip punctuation/symbols from a query string and split it into individual
+ * words, filtering out any empty tokens.
+ *
+ * "apple raw"  → ["apple", "raw"]
+ * "apple, raw" → ["apple", "raw"]   (comma stripped)
+ * "green tea"  → ["green", "tea"]
+ */
+function queryToWords(str) {
+  return str
+    .replace(/[^a-zA-Z0-9\s]/g, " ") // replace non-alphanumeric with space
+    .split(/\s+/)                      // split on whitespace
+    .filter(Boolean);                  // drop empty strings
+}
+
+// ─── GET /api/food/search?q=apple+raw&limit=20 ───────────────────────────────
 //
-// Uses an aggregation pipeline to score results by relevance BEFORE applying
-// $limit, so the best matches are never cut off by the result cap.
+// Aggregation pipeline — relevance scoring (lower = better):
 //
-// Relevance scoring (lower = better):
-//   1  Exact match        "tea"         dish_name === query
-//   2  Starts-with        "Tea leaves"  dish_name starts with query
-//   3  Whole-word match   "Iced tea"    query is a standalone word in dish_name
-//   4  Substring match    "Steak"       query appears anywhere (default)
+//   1  Exact match       dish_name === full query          "apple"
+//   2  Starts-with       dish_name starts with full query  "apple pie"
+//   3  Whole-word        full query is a standalone word   "green apple"
+//   4  All-words present every query word exists somewhere "apple, raw"  ← default
+//
+// Tie-breaking within the same score: shorter dish_name wins.
 //
 router.get("/search", requireAuth, async (c) => {
   const raw   = (c.req.query("q") || "").trim();
@@ -78,79 +99,146 @@ router.get("/search", requireAuth, async (c) => {
     return c.json({ error: "Query must be at least 2 characters" }, 400);
   }
 
-  const esc = escapeRegex(raw);
+  // ── Pre-process the query ──────────────────────────────────────────────────
+
+  // Individual words used for the $match filter (punctuation-tolerant).
+  const words = queryToWords(raw);
+
+  if (words.length === 0) {
+    return c.json({ error: "Query contains no searchable words" }, 400);
+  }
+
+  // Escaped full query used for the high-confidence scoring branches.
+  // We also build a "cleaned" version (punctuation stripped) so that
+  // "apple raw" and "apple, raw" both hit score-1/2/3 when appropriate.
+  const escapedFull    = escapeRegex(raw);
+  const cleanedQuery   = words.join(" ");          // "apple raw" → "apple raw"
+  const escapedCleaned = escapeRegex(cleanedQuery);
+
+  // $and array: every word must appear somewhere in dish_name.
+  // This is what makes "apple raw" match "apple, raw" — the comma is ignored
+  // because we test each word independently.
+  const wordFilters = words.map((w) => ({
+    dish_name: { $regex: escapeRegex(w), $options: "i" },
+  }));
 
   try {
     const docs = await Food.aggregate([
 
-      // Stage 1 — filter: keep only documents that contain the query anywhere.
-      // This shrinks the working set before the more expensive scoring stages.
+      // ── Stage 1: filter ────────────────────────────────────────────────────
+      // Keep only documents where EVERY query word appears in dish_name.
+      // Using $and + per-word $regex is punctuation-agnostic: "apple, raw"
+      // passes the filter for words ["apple", "raw"] because both words exist
+      // in the string regardless of the comma between them.
       {
-        $match: {
-          dish_name: { $regex: esc, $options: "i" },
-        },
+        $match: { $and: wordFilters },
       },
 
-      // Stage 2 — score: add a temporary relevanceScore field.
-      // $switch evaluates branches in order and stops at the first match,
-      // so the priority is enforced naturally.
+      // ── Stage 2: score + nameLength ────────────────────────────────────────
       {
         $addFields: {
+
+          // nameLength is used as a secondary sort key so that among results
+          // with the same relevanceScore, shorter names rank higher.
+          // e.g. "apple pie" (9) beats "apple banana pie" (16) at score 4.
+          nameLength: { $strLenCP: "$dish_name" },
+
           relevanceScore: {
             $switch: {
               branches: [
-                // 1 — exact match (full string, anchored both ends)
+                // 1 — exact match against the original query (anchored ^ … $)
                 {
                   case: {
                     $regexMatch: {
                       input:   "$dish_name",
-                      regex:   "^" + esc + "$",
+                      regex:   "^" + escapedFull + "$",
                       options: "i",
                     },
                   },
                   then: 1,
                 },
-                // 2 — starts-with (anchored at start only)
+                // Also try the cleaned (punctuation-stripped) version so that
+                // a DB entry "apple, raw" still scores 1 when the user types
+                // "apple raw" (both reduce to the same words).
                 {
                   case: {
                     $regexMatch: {
                       input:   "$dish_name",
-                      regex:   "^" + esc,
+                      regex:   "^" + escapedCleaned + "$",
+                      options: "i",
+                    },
+                  },
+                  then: 1,
+                },
+
+                // 2 — starts-with the full query
+                {
+                  case: {
+                    $regexMatch: {
+                      input:   "$dish_name",
+                      regex:   "^" + escapedFull,
                       options: "i",
                     },
                   },
                   then: 2,
                 },
-                // 3 — whole-word match (\b word boundaries)
+                // 2 — starts-with the cleaned query
                 {
                   case: {
                     $regexMatch: {
                       input:   "$dish_name",
-                      regex:   "\\b" + esc + "\\b",
+                      regex:   "^" + escapedCleaned,
+                      options: "i",
+                    },
+                  },
+                  then: 2,
+                },
+
+                // 3 — whole-word match (\b boundaries) on the full query
+                {
+                  case: {
+                    $regexMatch: {
+                      input:   "$dish_name",
+                      regex:   "\\b" + escapedFull + "\\b",
+                      options: "i",
+                    },
+                  },
+                  then: 3,
+                },
+                // 3 — whole-word match on the cleaned query
+                {
+                  case: {
+                    $regexMatch: {
+                      input:   "$dish_name",
+                      regex:   "\\b" + escapedCleaned + "\\b",
                       options: "i",
                     },
                   },
                   then: 3,
                 },
               ],
-              // 4 — substring match (already guaranteed by Stage 1 $match)
+
+              // 4 — all words present (guaranteed by Stage 1), but no
+              //     contiguous phrase match found above.
               default: 4,
             },
           },
         },
       },
 
-      // Stage 3 — sort: best relevance first; alphabetical as tiebreaker.
+      // ── Stage 3: sort ──────────────────────────────────────────────────────
+      // Primary:   relevanceScore ascending (1 = best)
+      // Secondary: nameLength ascending (shorter name wins ties)
       {
-        $sort: { relevanceScore: 1, dish_name: 1 },
+        $sort: { relevanceScore: 1, nameLength: 1 },
       },
 
-      // Stage 4 — limit: applied AFTER sorting so top matches are never lost.
+      // ── Stage 4: limit — applied AFTER sort so best results are never lost ─
       {
         $limit: limit,
       },
 
-      // Stage 5 — project: return only the fields we need; drop the temp score.
+      // ── Stage 5: project — return real fields only; drop temp fields ───────
       {
         $project: {
           dish_name:      1,
@@ -159,7 +247,7 @@ router.get("/search", requireAuth, async (c) => {
           fats_breakdown: 1,
           vitamins:       1,
           minerals:       1,
-          // relevanceScore is intentionally omitted — $project whitelist drops it
+          // relevanceScore and nameLength are absent → MongoDB drops them
         },
       },
     ]);

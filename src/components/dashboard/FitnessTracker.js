@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { activityApi } from "../../api/client";
 
@@ -14,50 +14,92 @@ const ACTIVITY_TYPES = [
   { value: "other",    label: "Other",    emoji: "💪" },
 ];
 
-// Days-per-week target derived from activity level
 const ACTIVITY_TARGETS = {
-  sedentary:          2,
-  lightly_active:     3,
-  moderately_active:  4,
-  very_active:        6,
+  sedentary:         2,
+  lightly_active:    3,
+  moderately_active: 4,
+  very_active:       6,
 };
 
-export default function FitnessTracker({ activityLevel = "moderately_active" }) {
-  const [weekData, setWeekData]     = useState(null);
-  const [showLog, setShowLog]       = useState(false);
-  const [loading, setLoading]       = useState(true);
+// ─── Trash icon ───────────────────────────────────────────────────────────────
+function TrashIcon() {
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+    </svg>
+  );
+}
+
+// ─── FitnessTracker ───────────────────────────────────────────────────────────
+export default function FitnessTracker({
+  activityLevel = "moderately_active",
+  activeDate,   // YYYY-MM-DD — passed from Dashboard
+}) {
+  const todayStr   = new Date().toISOString().split("T")[0];
+  const dateToShow = activeDate || todayStr;
+  const isToday    = dateToShow === todayStr;
+
+  const [dateLogs, setDateLogs]   = useState([]);   // activities for the viewed date
+  const [daysActive, setDaysActive] = useState(0);  // rolling 7-day count
+  const [streak, setStreak]       = useState(0);
+  const [weekLogs, setWeekLogs]   = useState([]);   // for the dot grid
+  const [loading, setLoading]     = useState(true);
+  const [showLog, setShowLog]     = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   const weekTarget = ACTIVITY_TARGETS[activityLevel] || 4;
 
-  const load = async () => {
+  // ── Fetch data for the active date ─────────────────────────────────────────
+  const load = useCallback(async () => {
+    setLoading(true);
     try {
-      const { data } = await activityApi.getWeek();
-      setWeekData(data);
+      const { data } = await activityApi.getByDate(dateToShow);
+      setDateLogs(data.logs       || []);
+      setDaysActive(data.daysActive ?? 0);
+      setStreak(data.streak       ?? 0);
+      setWeekLogs(data.weekLogs   || []);
     } catch {
-      setWeekData({ logs: [], daysActive: 0, streak: 0 });
+      setDateLogs([]);
+      setDaysActive(0);
+      setStreak(0);
+      setWeekLogs([]);
     } finally {
       setLoading(false);
     }
+  }, [dateToShow]);
+
+  useEffect(() => { load(); }, [load]);
+
+  // ── Delete a single activity entry ─────────────────────────────────────────
+  const handleDelete = async (id) => {
+    setDeletingId(id);
+    try {
+      await activityApi.delete(id);
+      // Optimistic removal + refresh week stats
+      await load();
+    } catch (e) {
+      console.error("Failed to delete activity:", e);
+    } finally {
+      setDeletingId(null);
+    }
   };
 
-  useEffect(() => { load(); }, []);
+  // ── Derived values ──────────────────────────────────────────────────────────
+  const pct         = Math.min((daysActive / weekTarget) * 100, 100);
+  const activeDates = new Set(weekLogs.map((l) => l.dateString));
 
-  const daysActive = weekData?.daysActive ?? 0;
-  const streak     = weekData?.streak     ?? 0;
-  const pct        = Math.min((daysActive / weekTarget) * 100, 100);
-
-  // Build last-7-days grid
-  const today = new Date();
+  // Build last-7-days grid anchored to today (not activeDate)
   const last7 = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(today);
+    const d = new Date(todayStr + "T12:00:00");
     d.setDate(d.getDate() - (6 - i));
     return d.toISOString().split("T")[0];
   });
-  const activeDates = new Set((weekData?.logs || []).map((l) => l.dateString));
 
   return (
     <div className="glass-card rounded-2xl p-5 space-y-4">
-      {/* Header */}
+
+      {/* ── Header ── */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-xl flex items-center justify-center text-base"
@@ -66,26 +108,32 @@ export default function FitnessTracker({ activityLevel = "moderately_active" }) 
           </div>
           <div>
             <p className="text-sm font-semibold text-white">Fitness</p>
-            <p className="text-[11px] text-slate-600">Weekly activity</p>
+            <p className="text-[11px] text-slate-600">
+              {isToday ? "Today's activity" : `Activity · ${formatShort(dateToShow)}`}
+            </p>
           </div>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setShowLog(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
-          style={{
-            background: "rgba(52,211,153,0.12)",
-            border: "1px solid rgba(52,211,153,0.25)",
-            color: "#34d399",
-            boxShadow: "0 0 12px rgba(52,211,153,0.15)",
-          }}
-        >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-          </svg>
-          Log Activity
-        </motion.button>
+
+        {/* Only allow logging for today */}
+        {isToday && (
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setShowLog(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
+            style={{
+              background: "rgba(52,211,153,0.12)",
+              border: "1px solid rgba(52,211,153,0.25)",
+              color: "#34d399",
+              boxShadow: "0 0 12px rgba(52,211,153,0.15)",
+            }}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+            </svg>
+            Log Activity
+          </motion.button>
+        )}
       </div>
 
       {loading ? (
@@ -94,9 +142,8 @@ export default function FitnessTracker({ activityLevel = "moderately_active" }) 
         </div>
       ) : (
         <>
-          {/* Stats row */}
+          {/* ── Week stats (always show rolling 7-day numbers) ── */}
           <div className="grid grid-cols-3 gap-2">
-            {/* Days active */}
             <div className="rounded-xl p-3 text-center"
               style={{ background: "rgba(52,211,153,0.07)", border: "1px solid rgba(52,211,153,0.15)" }}>
               <p className="text-xl font-bold text-emerald-400">
@@ -104,23 +151,22 @@ export default function FitnessTracker({ activityLevel = "moderately_active" }) 
               </p>
               <p className="text-[10px] text-slate-500 mt-0.5">Days this week</p>
             </div>
-            {/* Streak */}
+
             <div className="rounded-xl p-3 text-center"
               style={{ background: "rgba(251,191,36,0.07)", border: "1px solid rgba(251,191,36,0.15)" }}>
               <p className="text-xl font-bold text-amber-400">
-                {streak}
-                <span className="text-sm ml-0.5">🔥</span>
+                {streak}<span className="text-sm ml-0.5">🔥</span>
               </p>
               <p className="text-[10px] text-slate-500 mt-0.5">Day streak</p>
             </div>
-            {/* Target met */}
+
             <div className="rounded-xl p-3 text-center"
               style={{
                 background: daysActive >= weekTarget ? "rgba(52,211,153,0.1)" : "rgba(255,255,255,0.03)",
-                border: daysActive >= weekTarget ? "1px solid rgba(52,211,153,0.3)" : "1px solid rgba(255,255,255,0.06)",
+                border:     daysActive >= weekTarget ? "1px solid rgba(52,211,153,0.3)" : "1px solid rgba(255,255,255,0.06)",
               }}>
               <p className={`text-xl font-bold ${daysActive >= weekTarget ? "text-emerald-400" : "text-slate-500"}`}>
-                {daysActive >= weekTarget ? "✓" : `${weekTarget - daysActive}`}
+                {daysActive >= weekTarget ? "✓" : weekTarget - daysActive}
               </p>
               <p className="text-[10px] text-slate-500 mt-0.5">
                 {daysActive >= weekTarget ? "Goal met!" : "days left"}
@@ -128,7 +174,7 @@ export default function FitnessTracker({ activityLevel = "moderately_active" }) 
             </div>
           </div>
 
-          {/* Weekly progress bar */}
+          {/* ── Weekly progress bar ── */}
           <div>
             <div className="flex justify-between text-[10px] text-slate-600 mb-1.5">
               <span>Weekly progress</span>
@@ -148,12 +194,15 @@ export default function FitnessTracker({ activityLevel = "moderately_active" }) 
             </div>
           </div>
 
-          {/* 7-day dot grid */}
+          {/* ── 7-day dot grid (always anchored to today) ── */}
           <div className="flex gap-1.5 justify-between">
             {last7.map((d) => {
-              const isActive  = activeDates.has(d);
-              const isToday   = d === today.toISOString().split("T")[0];
-              const dayLabel  = new Date(d + "T12:00:00").toLocaleDateString("en-US", { weekday: "short" })[0];
+              const isActive    = activeDates.has(d);
+              const isTodayDot  = d === todayStr;
+              const isSelected  = d === dateToShow;
+              const dayLabel    = new Date(d + "T12:00:00")
+                .toLocaleDateString("en-US", { weekday: "short" })[0];
+
               return (
                 <div key={d} className="flex flex-col items-center gap-1 flex-1">
                   <div
@@ -162,11 +211,13 @@ export default function FitnessTracker({ activityLevel = "moderately_active" }) 
                       background: isActive
                         ? "rgba(52,211,153,0.25)"
                         : "rgba(255,255,255,0.04)",
-                      border: isToday
-                        ? "1px solid rgba(99,102,241,0.5)"
-                        : isActive
-                          ? "1px solid rgba(52,211,153,0.4)"
-                          : "1px solid rgba(255,255,255,0.06)",
+                      border: isSelected
+                        ? "1px solid rgba(99,102,241,0.6)"
+                        : isTodayDot
+                          ? "1px solid rgba(99,102,241,0.35)"
+                          : isActive
+                            ? "1px solid rgba(52,211,153,0.4)"
+                            : "1px solid rgba(255,255,255,0.06)",
                       boxShadow: isActive ? "0 0 8px rgba(52,211,153,0.2)" : "none",
                     }}
                   >
@@ -178,39 +229,84 @@ export default function FitnessTracker({ activityLevel = "moderately_active" }) 
             })}
           </div>
 
-          {/* Recent activities */}
-          {weekData?.logs?.length > 0 && (
-            <div className="space-y-1.5 pt-1 border-t border-white/5">
-              <p className="text-[10px] text-slate-600 uppercase tracking-widest">Recent</p>
-              {weekData.logs.slice(0, 3).map((log) => {
-                const type = ACTIVITY_TYPES.find((t) => t.value === log.activityType);
-                return (
-                  <div key={log._id} className="flex items-center gap-2 py-1">
-                    <span className="text-sm">{type?.emoji || "💪"}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-slate-300 truncate">{log.label || type?.label}</p>
-                      <p className="text-[10px] text-slate-600">
-                        {log.dateString}
-                        {log.durationMinutes ? ` · ${log.durationMinutes}min` : ""}
-                      </p>
-                    </div>
-                    {log.caloriesBurned > 0 && (
-                      <span className="text-[11px] text-emerald-500 flex-shrink-0">
-                        -{log.caloriesBurned} kcal
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          {/* ── Activities for the viewed date ── */}
+          <div className="space-y-1.5 pt-1 border-t border-white/5">
+            <p className="text-[10px] text-slate-600 uppercase tracking-widest">
+              {isToday ? "Today" : formatShort(dateToShow)}
+            </p>
+
+            {dateLogs.length === 0 ? (
+              <p className="text-xs text-slate-700 py-2">
+                {isToday ? "No activity logged yet." : "No activity on this day."}
+              </p>
+            ) : (
+              <AnimatePresence initial={false}>
+                {dateLogs.map((log) => {
+                  const type = ACTIVITY_TYPES.find((t) => t.value === log.activityType);
+                  const isDeleting = deletingId === log._id;
+
+                  return (
+                    <motion.div
+                      key={log._id}
+                      initial={{ opacity: 0, x: -6 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 10, height: 0, marginBottom: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex items-center gap-2 py-1.5 px-2 rounded-xl group"
+                      style={{ background: "rgba(255,255,255,0.03)" }}
+                    >
+                      <span className="text-base flex-shrink-0">{type?.emoji || "💪"}</span>
+
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-slate-300 truncate font-medium">
+                          {log.label || type?.label}
+                        </p>
+                        <p className="text-[10px] text-slate-600">
+                          {log.durationMinutes ? `${log.durationMinutes} min` : ""}
+                          {log.durationMinutes && log.caloriesBurned > 0 ? " · " : ""}
+                          {log.caloriesBurned > 0 ? (
+                            <span className="text-emerald-600">-{log.caloriesBurned} kcal</span>
+                          ) : null}
+                        </p>
+                      </div>
+
+                      {/* Delete button — deep crimson glow, always visible on mobile */}
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => handleDelete(log._id)}
+                        disabled={isDeleting}
+                        className="flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center
+                                   opacity-0 group-hover:opacity-100 focus:opacity-100
+                                   transition-all duration-150 disabled:opacity-40"
+                        style={{
+                          background: "rgba(185,28,28,0.15)",
+                          border: "1px solid rgba(185,28,28,0.3)",
+                          color: "#f87171",
+                          boxShadow: "0 0 8px rgba(185,28,28,0.2)",
+                        }}
+                        title="Delete activity"
+                      >
+                        {isDeleting ? (
+                          <div className="w-3 h-3 border border-red-400 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <TrashIcon />
+                        )}
+                      </motion.button>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            )}
+          </div>
         </>
       )}
 
-      {/* Log Activity Modal */}
+      {/* ── Log Activity Modal ── */}
       <AnimatePresence>
         {showLog && (
           <LogActivityModal
+            activeDate={dateToShow}
             onClose={() => setShowLog(false)}
             onSaved={() => { setShowLog(false); load(); }}
           />
@@ -220,14 +316,20 @@ export default function FitnessTracker({ activityLevel = "moderately_active" }) 
   );
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function formatShort(dateStr) {
+  return new Date(dateStr + "T12:00:00").toLocaleDateString("en-US", {
+    month: "short", day: "numeric",
+  });
+}
+
 // ─── Log Activity Modal ───────────────────────────────────────────────────────
-function LogActivityModal({ onClose, onSaved }) {
+function LogActivityModal({ activeDate, onClose, onSaved }) {
   const [form, setForm] = useState({
     activityType: "gym",
     label: "",
     durationMinutes: "",
     caloriesBurned: "",
-    notes: "",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState("");
@@ -238,6 +340,7 @@ function LogActivityModal({ onClose, onSaved }) {
     try {
       await activityApi.log({
         ...form,
+        date: activeDate,
         durationMinutes: form.durationMinutes ? +form.durationMinutes : undefined,
         caloriesBurned:  form.caloriesBurned  ? +form.caloriesBurned  : undefined,
       });

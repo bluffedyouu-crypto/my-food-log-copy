@@ -72,6 +72,41 @@ router.get("/week", requireAuth, async (c) => {
   }
 });
 
+// GET /api/activity/date?date=YYYY-MM-DD — activities for a specific date
+// Also returns the rolling 7-day week stats so the widget can refresh them.
+router.get("/date", requireAuth, async (c) => {
+  const authUser = c.get("authUser");
+  const dateStr  = c.req.query("date") || todayString();
+
+  try {
+    // Activities for the requested date
+    const dateLogs = await ActivityLog.find({
+      userId: authUser.id,
+      dateString: dateStr,
+    })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Recompute rolling week stats so the header counters stay accurate
+    const days     = lastNDays(7);
+    const fromDate = days[days.length - 1];
+    const toDate   = days[0];
+
+    const weekLogs = await ActivityLog.find({
+      userId: authUser.id,
+      dateString: { $gte: fromDate, $lte: toDate },
+    }).lean();
+
+    const activeDates = [...new Set(weekLogs.map((l) => l.dateString))];
+    const daysActive  = activeDates.length;
+    const streak      = calculateStreak(activeDates);
+
+    return c.json({ logs: dateLogs, daysActive, streak, weekLogs });
+  } catch (err) {
+    console.error("GET /api/activity/date error:", err);
+    return c.json({ error: "Failed to fetch activity logs" }, 500);
+  }
+});
 // POST /api/activity — log a new activity
 router.post("/", requireAuth, async (c) => {
   const authUser = c.get("authUser");

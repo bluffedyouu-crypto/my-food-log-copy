@@ -132,71 +132,151 @@ function DateNavigator({ activeDate, onChange }) {
 }
 
 // ─── Weight Log Card ──────────────────────────────────────────────────────────
-// Uses h-full so it stretches to match the DateNavigator height in the grid row
-function WeightLogCard({ weightUnit }) {
+// Fetches the weight entry for `activeDate` on mount/date change.
+// Shows input form when no entry exists; shows logged value + Remove button when one does.
+function WeightLogCard({ weightUnit, activeDate }) {
+  const todayStr   = new Date().toISOString().split("T")[0];
+  const dateToShow = activeDate || todayStr;
+  const isToday    = dateToShow === todayStr;
+
+  const [entry, setEntry]   = useState(null);   // { _id, weight, unit, date } | null
+  const [fetching, setFetching] = useState(true);
   const [weight, setWeight] = useState("");
   const [unit, setUnit]     = useState(weightUnit || "kg");
   const [saving, setSaving] = useState(false);
-  const [done, setDone]     = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const [error, setError]   = useState("");
+
+  // Fetch entry for the active date whenever it changes
+  useEffect(() => {
+    let cancelled = false;
+    setFetching(true);
+    setError("");
+    userApi.getWeightForDate(dateToShow)
+      .then(({ data }) => { if (!cancelled) setEntry(data.entry || null); })
+      .catch(() => { if (!cancelled) setEntry(null); })
+      .finally(() => { if (!cancelled) setFetching(false); });
+    return () => { cancelled = true; };
+  }, [dateToShow]);
 
   const handleLog = async () => {
     if (!weight) return;
     setSaving(true);
+    setError("");
     try {
-      await userApi.logWeight(weight, unit);
+      await userApi.logWeight(weight, unit, dateToShow);
+      // Refresh to get the new entry with its _id
+      const { data } = await userApi.getWeightForDate(dateToShow);
+      setEntry(data.entry || null);
       setWeight("");
-      setDone(true);
-      setTimeout(() => setDone(false), 2500);
     } catch (e) {
-      console.error(e);
+      setError(e.message);
     } finally {
       setSaving(false);
     }
   };
 
+  const handleRemove = async () => {
+    if (!entry?._id) return;
+    setRemoving(true);
+    setError("");
+    try {
+      await userApi.deleteWeightEntry(entry._id);
+      setEntry(null);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setRemoving(false);
+    }
+  };
+
   return (
     <div className="glass-card rounded-2xl px-4 py-3 flex flex-col justify-between h-full gap-3">
-      {/* Top label */}
+      {/* Header */}
       <div className="flex items-center gap-2">
         <div className="w-8 h-8 rounded-xl flex items-center justify-center text-base flex-shrink-0"
           style={{ background: "rgba(167,139,250,0.12)", border: "1px solid rgba(167,139,250,0.2)" }}>
           ⚖️
         </div>
-        <p className="text-sm font-semibold text-white">Log Weight</p>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-white leading-tight">Weight</p>
+          <p className="text-[10px] text-slate-600">
+            {isToday ? "Today" : new Date(dateToShow + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+          </p>
+        </div>
       </div>
 
-      {/* Input row */}
-      <div className="flex gap-2">
-        <input
-          type="number"
-          placeholder="e.g. 75"
-          value={weight}
-          onChange={(e) => setWeight(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleLog()}
-          className="flex-1 min-w-0 px-3 py-2 rounded-xl text-sm bg-black/30 border border-white/10 text-white placeholder-slate-600 focus:border-violet-500 transition-all"
-        />
-        <select
-          value={unit}
-          onChange={(e) => setUnit(e.target.value)}
-          className="px-2 py-2 rounded-xl text-xs bg-black/30 border border-white/10 text-slate-400 focus:border-violet-500 transition-all"
-        >
-          <option value="kg">kg</option>
-          <option value="lbs">lbs</option>
-        </select>
-      </div>
+      {fetching ? (
+        <div className="flex justify-center py-2">
+          <div className="w-4 h-4 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : entry ? (
+        /* ── Already logged — show value + Remove button ── */
+        <>
+          <div className="flex items-baseline gap-1.5 justify-center py-1">
+            <span className="text-3xl font-bold text-white">{entry.weight}</span>
+            <span className="text-sm text-slate-400">{entry.unit || unit}</span>
+          </div>
 
-      {/* Log button */}
-      <button
-        onClick={handleLog}
-        disabled={!weight || saving}
-        className={`w-full py-2 rounded-xl text-xs font-semibold transition-all duration-200 ${
-          done
-            ? "bg-green-500/20 border border-green-500/30 text-green-400"
-            : "bg-violet-500/15 border border-violet-500/25 text-violet-300 hover:bg-violet-500/25 disabled:opacity-40"
-        }`}
-      >
-        {done ? "✓ Logged!" : saving ? "Saving…" : "Log Weight"}
-      </button>
+          {error && <p className="text-[10px] text-red-400 text-center">{error}</p>}
+
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handleRemove}
+            disabled={removing}
+            className="w-full py-2 rounded-xl text-xs font-semibold transition-all duration-200 disabled:opacity-50"
+            style={{
+              background: "rgba(185,28,28,0.15)",
+              border: "1px solid rgba(185,28,28,0.35)",
+              color: "#f87171",
+              boxShadow: "0 0 10px rgba(185,28,28,0.2)",
+            }}
+          >
+            {removing ? "Removing…" : "🗑 Remove Log"}
+          </motion.button>
+        </>
+      ) : (
+        /* ── Not logged yet — show input form ── */
+        <>
+          <div className="flex gap-2">
+            <input
+              type="number"
+              placeholder="e.g. 75"
+              value={weight}
+              onChange={(e) => setWeight(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleLog()}
+              disabled={!isToday}
+              className="flex-1 min-w-0 px-3 py-2 rounded-xl text-sm bg-black/30 border border-white/10 text-white placeholder-slate-600 focus:border-violet-500 transition-all disabled:opacity-40"
+            />
+            <select
+              value={unit}
+              onChange={(e) => setUnit(e.target.value)}
+              disabled={!isToday}
+              className="px-2 py-2 rounded-xl text-xs bg-black/30 border border-white/10 text-slate-400 focus:border-violet-500 transition-all disabled:opacity-40"
+            >
+              <option value="kg">kg</option>
+              <option value="lbs">lbs</option>
+            </select>
+          </div>
+
+          {error && <p className="text-[10px] text-red-400">{error}</p>}
+
+          {isToday ? (
+            <button
+              onClick={handleLog}
+              disabled={!weight || saving}
+              className="w-full py-2 rounded-xl text-xs font-semibold transition-all duration-200
+                         bg-violet-500/15 border border-violet-500/25 text-violet-300
+                         hover:bg-violet-500/25 disabled:opacity-40"
+            >
+              {saving ? "Saving…" : "Log Weight"}
+            </button>
+          ) : (
+            <p className="text-[10px] text-slate-700 text-center">No weight logged</p>
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -304,7 +384,7 @@ export default function Dashboard() {
         </div>
         <div className="flex">
           <div className="flex-1">
-            <WeightLogCard weightUnit={appUser?.profile?.weightUnit} />
+            <WeightLogCard weightUnit={appUser?.profile?.weightUnit} activeDate={activeDate} />
           </div>
         </div>
       </motion.div>
@@ -388,7 +468,10 @@ export default function Dashboard() {
 
       {/* ── Fitness Tracker widget ── */}
       <motion.div variants={fadeUp}>
-        <FitnessTracker activityLevel={appUser?.profile?.activityLevel} />
+        <FitnessTracker
+          activityLevel={appUser?.profile?.activityLevel}
+          activeDate={activeDate}
+        />
       </motion.div>
 
       {/* ── Food Search (inline) ── */}
