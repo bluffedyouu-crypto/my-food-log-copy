@@ -80,6 +80,31 @@ function queryToWords(str) {
     .filter(Boolean);                  // drop empty strings
 }
 
+router.post('/custom', requireAuth, async (c) => {
+  try {
+    // 1. Parse the JSON body in Hono
+    const newFood = await c.req.json();
+    
+    // 2. Add the exact server-side timestamp
+    newFood.createdAt = new Date();
+    
+    // 3. Insert into the database using your existing Mongoose 'Food' model
+    const createdFood = await Food.create(newFood);
+    
+    // 4. Return a 201 (Created) status using Hono's c.json()
+    // We also run it through normaliseFoodDoc so your frontend gets the exact 
+    // same data shape it expects from your search endpoint!
+    return c.json({
+      success: true,
+      food: normaliseFoodDoc(createdFood)
+    }, 201);
+    
+  } catch (error) {
+    console.error("Failed to create custom food:", error);
+    return c.json({ error: "Internal server error while saving food" }, 500);
+  }
+});
+
 // ─── GET /api/food/search?q=apple+raw&limit=20 ───────────────────────────────
 //
 // Aggregation pipeline — relevance scoring (lower = better):

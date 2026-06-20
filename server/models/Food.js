@@ -56,6 +56,8 @@ const foodSchema = new mongoose.Schema({
     zinc_mg:       { type: Number, default: null },
     copper_mg:     { type: Number, default: null },
   },
+  createdAt: { type: Date, default: Date.now },
+  createdBy: { type: String }
 });
 
 // Text index for full-text search fallback

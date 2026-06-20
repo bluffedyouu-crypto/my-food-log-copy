@@ -5,6 +5,7 @@ import Modal from "../ui/Modal";
 import Button from "../ui/Button";
 import { MEAL_LABEL_MAP } from "../../constants/meals";
 import client from "../../api/client";
+import CustomFoodModal from "./CustomFoodModal"; // Added the missing import
 
 // Flat label map for the meal selector pills
 const MEAL_LABELS = MEAL_LABEL_MAP;
@@ -27,6 +28,10 @@ export default function FoodSearch({ selectedMeal, onClose, onLogged }) {
   const [selectedFood, setSelectedFood]     = useState(null);
   const [showQuantityModal, setShowQuantityModal] = useState(false);
   const [activeMeal, setActiveMeal]         = useState(selectedMeal || "daybreak_nourish");
+  
+  // Added the missing hasSearched state
+  const [hasSearched, setHasSearched]       = useState(false); 
+  const [showCustomModal, setShowCustomModal] = useState(false);
 
   // 300 ms debounce ref
   const debounceRef = useRef(null);
@@ -38,6 +43,7 @@ export default function FoodSearch({ selectedMeal, onClose, onLogged }) {
 
     if (value.trim().length < 2) {
       setResults([]);
+      setHasSearched(false); // Reset search state if they clear the box
       return;
     }
 
@@ -51,6 +57,7 @@ export default function FoodSearch({ selectedMeal, onClose, onLogged }) {
         setResults([]);
       } finally {
         setSearching(false);
+        setHasSearched(true); // Flag that a search just completed
       }
     }, 300);
   }, []);
@@ -123,7 +130,7 @@ export default function FoodSearch({ selectedMeal, onClose, onLogged }) {
           />
           {query && (
             <button
-              onClick={() => { setQuery(""); setResults([]); }}
+              onClick={() => { setQuery(""); setResults([]); setHasSearched(false); }}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -201,10 +208,22 @@ export default function FoodSearch({ selectedMeal, onClose, onLogged }) {
             </motion.div>
           )}
 
-          {!searching && query.length >= 2 && results.length === 0 && (
-            <p className="text-center text-slate-500 text-sm py-6">
-              No results found for &ldquo;{query}&rdquo;
-            </p>
+          {/* If searched, NOT searching currently, and NO results are found, show the prompt */}
+          {!searching && hasSearched && results.length === 0 && (
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              className="text-center py-8"
+            >
+              <div className="text-4xl mb-3">🍽️</div>
+              <p className="text-slate-400 text-sm mb-4">We couldn't find "{query}" in our database.</p>
+              <button 
+                onClick={() => setShowCustomModal(true)}
+                className="px-6 py-2 bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 rounded-xl text-sm font-semibold hover:bg-indigo-500/30 transition-all"
+              >
+                + Add Your Own Food
+              </button>
+            </motion.div>
           )}
         </AnimatePresence>
 
@@ -218,6 +237,38 @@ export default function FoodSearch({ selectedMeal, onClose, onLogged }) {
           </button>
         </div>
       </div>
+
+      {/* Render the Custom Food Modal if triggered */}
+      <AnimatePresence>
+        {showCustomModal && (
+          <CustomFoodModal 
+            onClose={() => setShowCustomModal(false)}
+            onSaved={(newFood) => {
+              setShowCustomModal(false);
+              
+              // Map raw database JSON to the format your UI expects
+              const uiFormattedFood = {
+                _id: newFood._id || Date.now().toString(), // Fallback ID
+                name: newFood.dish_name,
+                servingSize: 100,
+                per100g: {
+                  calories: newFood.calories_kcal,
+                  protein: newFood.macros.protein_g,
+                  carbs: newFood.macros.carbohydrates_g,
+                  fats: newFood.macros.fat_total_g,
+                  fiber: newFood.macros.dietary_fiber_g,
+                  sugar: newFood.macros.sugars_g,
+                  sodium: 0
+                }
+              };
+
+              // Select it automatically so they can log it instantly!
+              setResults([uiFormattedFood]); 
+              setHasSearched(true);
+            }}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Quantity + nutrition preview modal */}
       <QuantityModal
