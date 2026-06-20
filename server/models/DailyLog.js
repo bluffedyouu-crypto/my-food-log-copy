@@ -37,7 +37,7 @@ const loggedFoodSchema = new mongoose.Schema(
     },
 
     quantity: { type: Number, required: true, min: 0.1 },
-    unit: { type: String, enum: ["g", "oz", "serving"], default: "g" },
+    unit: { type: String, enum: ["g", "oz", "serving", "piece", "cup", "bowl", "glass", "tablespoon", "teaspoon", "slice", "plate"], default: "g" },
     quantityInGrams: { type: Number, required: true },
 
     // Nutrition snapshot for this entry

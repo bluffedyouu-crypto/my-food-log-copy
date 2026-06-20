@@ -80,7 +80,7 @@ router.post("/onboarding", requireAuth, async (c) => {
           },
         },
       },
-      { new: true, upsert: true }
+      { returnDocument: "after", upsert: true }
     );
 
     return c.json({ user, dailyTargets });
@@ -159,7 +159,7 @@ router.patch("/settings", requireAuth, async (c) => {
     const user = await User.findOneAndUpdate(
       { authUserId: authUser.id },
       updateOp,
-      { new: true, runValidators: false }
+      { returnDocument: "after", runValidators: false }
     );
 
     if (!user) return c.json({ error: "User not found" }, 404);
@@ -210,7 +210,7 @@ router.post("/weight", requireAuth, async (c) => {
         },
         $set: { "profile.currentWeight": +weight },
       },
-      { new: true, runValidators: false }
+      { returnDocument: "after", runValidators: false }
     );
 
     return c.json({ weightHistory: updated.weightHistory });
@@ -249,7 +249,7 @@ router.delete("/weight/:entryId", requireAuth, async (c) => {
     const updated = await User.findOneAndUpdate(
       { authUserId: authUser.id },
       { $pull: { weightHistory: { _id: entryId } } },
-      { new: true, runValidators: false }
+      { returnDocument: "after", runValidators: false }
     );
 
     if (!updated) return c.json({ error: "User not found" }, 404);

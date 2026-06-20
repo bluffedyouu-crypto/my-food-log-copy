@@ -56,6 +56,17 @@ const foodSchema = new mongoose.Schema({
     zinc_mg:       { type: Number, default: null },
     copper_mg:     { type: Number, default: null },
   },
+  // Group 5: Quantities
+  quantities: {
+    piece: { type: Number, default: null },
+    cup: { type: Number, default: null },
+    bowl: { type: Number, default: null },
+    glass: { type: Number, default: null },
+    tablespoon: { type: Number, default: null },
+    teaspoon: { type: Number, default: null },
+    slice: { type: Number, default: null },
+    plate: { type: Number, default: null },
+  },
   createdAt: { type: Date, default: Date.now },
   createdBy: { type: String }
 });

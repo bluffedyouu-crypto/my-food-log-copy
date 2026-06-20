@@ -50,6 +50,7 @@ function normaliseFoodDoc(doc) {
     fats_breakdown: doc.fats_breakdown,
     vitamins:       doc.vitamins,
     minerals:       doc.minerals,
+    quantities:     doc.quantities || null,
   };
 }
 
@@ -272,6 +273,7 @@ router.get("/search", requireAuth, async (c) => {
           fats_breakdown: 1,
           vitamins:       1,
           minerals:       1,
+          quantities:     1,
           // relevanceScore and nameLength are absent → MongoDB drops them
         },
       },

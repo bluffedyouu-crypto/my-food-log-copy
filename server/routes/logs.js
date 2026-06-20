@@ -95,7 +95,7 @@ router.post("/entry", requireAuth, async (c) => {
   const {
     foodItemId, fdcId, name, brand,
     mealCategory, quantity, unit,
-    per100g, servingSize,
+    per100g, servingSize, quantityInGrams: frontendQuantityInGrams,
     customBowlId, isFromCustomBowl,
     date,
   } = body;
@@ -105,7 +105,7 @@ router.post("/entry", requireAuth, async (c) => {
   }
 
   const dateStr = date || todayString();
-  const quantityInGrams = quantityToGrams(+quantity, unit || "g", servingSize || 100);
+  const quantityInGrams = frontendQuantityInGrams || quantityToGrams(+quantity, unit || "g", servingSize || 100);
   const nutrition = nutritionForGrams(per100g, quantityInGrams);
 
   try {
@@ -139,7 +139,7 @@ router.post("/entry", requireAuth, async (c) => {
           },
         },
       },
-      { new: true, upsert: true }
+      { returnDocument: "after", upsert: true }
     );
 
     // Trigger totals recalculation via save

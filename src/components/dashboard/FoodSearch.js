@@ -69,7 +69,7 @@ export default function FoodSearch({ selectedMeal, onClose, onLogged }) {
   };
 
   // ── Confirm quantity and log ────────────────────────────────────────────────
-  const handleLogFood = async ({ quantity, unit }) => {
+  const handleLogFood = async ({ quantity, unit, quantityInGrams }) => {
     if (!selectedFood) return;
 
     // per100g is already normalised by the backend's normaliseFoodDoc()
@@ -80,6 +80,7 @@ export default function FoodSearch({ selectedMeal, onClose, onLogged }) {
       mealCategory: activeMeal,
       quantity,
       unit,
+      quantityInGrams,
       per100g:     selectedFood.per100g,
       servingSize: selectedFood.servingSize || 100,
     });
@@ -251,6 +252,7 @@ export default function FoodSearch({ selectedMeal, onClose, onLogged }) {
                 _id: newFood._id || Date.now().toString(), // Fallback ID
                 name: newFood.dish_name,
                 servingSize: 100,
+                quantities: newFood.quantities || null,
                 per100g: {
                   calories: newFood.calories_kcal,
                   protein: newFood.macros.protein_g,
@@ -288,12 +290,33 @@ function QuantityModal({ isOpen, food, onClose, onConfirm, mealLabel }) {
   const [unit, setUnit]         = useState("g");
   const [logging, setLogging]   = useState(false);
 
+  React.useEffect(() => {
+    if (isOpen) {
+      setQuantity("100");
+      setUnit("g");
+    }
+  }, [isOpen, food]);
+
   if (!food) return null;
 
-  // Conversion factors to grams
-  const gramsMap = { g: 1, oz: 28.3495, serving: food.servingSize || 100 };
-  const grams    = parseFloat(quantity || 0) * (gramsMap[unit] || 1);
-  const factor   = grams / 100;
+  // Dynamic available units
+  const validQuantities = Object.entries(food.quantities || {})
+    .filter(([_, val]) => val !== null && val !== undefined)
+    .map(([key]) => key);
+
+  const availableUnits = ["g", ...validQuantities];
+  const safeUnit = availableUnits.includes(unit) ? unit : "g";
+
+  // Conversion logic
+  let gramsPerUnit = 1;
+  if (safeUnit === "g") {
+    gramsPerUnit = 1;
+  } else if (food.quantities && food.quantities[safeUnit]) {
+    gramsPerUnit = 100 / food.quantities[safeUnit];
+  }
+
+  const grams = parseFloat(quantity || 0) * gramsPerUnit;
+  const factor = grams / 100;
 
   // per100g is the normalised flat object — read directly
   const p = food.per100g || {};
@@ -302,7 +325,7 @@ function QuantityModal({ isOpen, food, onClose, onConfirm, mealLabel }) {
 
   const handleConfirm = async () => {
     setLogging(true);
-    await onConfirm({ quantity: parseFloat(quantity), unit });
+    await onConfirm({ quantity: parseFloat(quantity), unit: safeUnit, quantityInGrams: grams });
     setLogging(false);
     setQuantity("100");
     setUnit("g");
@@ -331,20 +354,25 @@ function QuantityModal({ isOpen, food, onClose, onConfirm, mealLabel }) {
               className="flex-1 px-4 py-3 rounded-xl bg-[#111827] border border-white/10 text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
             />
             <select
-              value={unit}
-              onChange={(e) => setUnit(e.target.value)}
+              value={safeUnit}
+              onChange={(e) => {
+                const newUnit = e.target.value;
+                setUnit(newUnit);
+                if (newUnit === "g") {
+                  setQuantity("100");
+                } else {
+                  setQuantity("1");
+                }
+              }}
               className="px-3 py-3 rounded-xl bg-[#111827] border border-white/10 text-slate-300 focus:border-indigo-500 transition-all"
             >
-              <option value="g">grams</option>
-              <option value="oz">oz</option>
-              <option value="serving">serving</option>
+              {availableUnits.map((u) => (
+                <option key={u} value={u}>
+                  {u === "g" ? "grams" : u}
+                </option>
+              ))}
             </select>
           </div>
-          {unit === "serving" && (
-            <p className="text-xs text-slate-500 mt-1">
-              1 serving = {food.servingSize || 100}g
-            </p>
-          )}
         </div>
 
         {/* Macro preview — reads from normalised per100g */}
