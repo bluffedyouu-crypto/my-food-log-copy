@@ -119,7 +119,7 @@ export default function MealCategory({
                   </div>
 
                   <div className="flex items-center gap-2 ml-2 flex-shrink-0">
-                    <div className="hidden group-hover:flex items-center gap-1.5 text-[11px]">
+                    <div className="flex items-center gap-1.5 text-[11px]">
                       <span className="text-cyan-500">P:{Math.round(entry.nutrition?.protein || 0)}g</span>
                       <span className="text-amber-500">C:{Math.round(entry.nutrition?.carbs || 0)}g</span>
                       <span className="text-pink-500">F:{Math.round(entry.nutrition?.fats || 0)}g</span>
@@ -127,7 +127,7 @@ export default function MealCategory({
                     <button
                       onClick={() => handleDelete(entry._id)}
                       disabled={deleting === entry._id}
-                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                      className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/10 active:text-red-400 active:bg-red-500/10 transition-all"
                     >
                       {deleting === entry._id ? (
                         <div className="w-3 h-3 border border-red-400 border-t-transparent rounded-full animate-spin" />

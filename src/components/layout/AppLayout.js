@@ -15,7 +15,12 @@ export default function AppLayout() {
     <LogProvider>
       <div className="min-h-screen bg-black flex">
         <Sidebar />
-        <main className="flex-1 ml-64 min-h-screen">
+        {/*
+          Desktop: push content right of the 256px sidebar (ml-64)
+          Mobile:  no left margin, add top padding for the fixed header (pt-16)
+                   and bottom padding for the bottom nav bar (pb-20)
+        */}
+        <main className="flex-1 min-h-screen md:ml-64">
           <motion.div
             key={window.location.pathname}
             variants={pageVariants}
@@ -23,7 +28,7 @@ export default function AppLayout() {
             animate="animate"
             exit="exit"
             transition={{ duration: 0.3, ease: "easeOut" }}
-            className="min-h-screen p-6"
+            className="min-h-screen p-4 md:p-6 pt-20 md:pt-6 pb-24 md:pb-6"
           >
             <Outlet />
           </motion.div>

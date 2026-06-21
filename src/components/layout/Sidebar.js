@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
 
 const navItems = [
@@ -16,7 +16,7 @@ const navItems = [
   },
   {
     to: "/bowl-builder",
-    label: "Bowl Builder",
+    label: "Bowls",
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
@@ -47,18 +47,11 @@ const navItems = [
   },
 ];
 
-export default function Sidebar() {
-  const { appUser, signOut } = useAuth();
-  const navigate = useNavigate();
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate("/login");
-  };
-
+// ─── Desktop Sidebar ──────────────────────────────────────────────────────────
+function DesktopSidebar({ appUser, onSignOut }) {
   return (
     <motion.aside
-      className="fixed left-0 top-0 h-full w-64 glass-strong border-r border-white/5 flex flex-col z-30"
+      className="hidden md:flex fixed left-0 top-0 h-full w-64 glass-strong border-r border-white/5 flex-col z-30"
       initial={{ x: -264 }}
       animate={{ x: 0 }}
       transition={{ type: "spring", damping: 30, stiffness: 300 }}
@@ -108,7 +101,7 @@ export default function Sidebar() {
           </div>
         </div>
         <button
-          onClick={handleSignOut}
+          onClick={onSignOut}
           className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -119,5 +112,119 @@ export default function Sidebar() {
         </button>
       </div>
     </motion.aside>
+  );
+}
+
+// ─── Mobile Header ────────────────────────────────────────────────────────────
+function MobileHeader({ appUser, onSignOut }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  return (
+    <>
+      <div className="md:hidden fixed top-0 left-0 right-0 z-40 glass-strong border-b border-white/5 px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-base">
+            🥗
+          </div>
+          <span className="text-white font-bold text-base">MacroSpace</span>
+        </div>
+        <button
+          onClick={() => setMenuOpen((v) => !v)}
+          className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/8 transition-all"
+        >
+          {menuOpen ? (
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-sm font-bold text-white">
+              {appUser?.name?.[0]?.toUpperCase() || "U"}
+            </div>
+          )}
+        </button>
+      </div>
+
+      {/* Slide-down user menu */}
+      <AnimatePresence>
+        {menuOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="md:hidden fixed top-[57px] left-0 right-0 z-30 glass-strong border-b border-white/5 px-4 py-4"
+          >
+            <div className="flex items-center gap-3 mb-4 pb-3 border-b border-white/5">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-base font-bold text-white">
+                {appUser?.name?.[0]?.toUpperCase() || "U"}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-white truncate">{appUser?.name || "User"}</p>
+                <p className="text-xs text-slate-500 truncate">{appUser?.email}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => { setMenuOpen(false); onSignOut(); }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm text-red-400 bg-red-500/10 border border-red-500/20 font-medium"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              Sign Out
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
+// ─── Mobile Bottom Navigation ─────────────────────────────────────────────────
+function MobileBottomNav() {
+  return (
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 glass-strong border-t border-white/5 flex items-center justify-around px-2 pb-safe"
+      style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 8px)", paddingTop: "8px" }}
+    >
+      {navItems.map((item) => (
+        <NavLink
+          key={item.to}
+          to={item.to}
+          className={({ isActive }) =>
+            `flex flex-col items-center gap-1 px-3 py-1 rounded-xl transition-all duration-200 min-w-0 ${
+              isActive ? "text-indigo-400" : "text-slate-500"
+            }`
+          }
+        >
+          {({ isActive }) => (
+            <>
+              <div className={`p-1.5 rounded-xl transition-all duration-200 ${isActive ? "bg-indigo-500/20" : ""}`}>
+                {item.icon}
+              </div>
+              <span className="text-[10px] font-medium leading-none">{item.label}</span>
+            </>
+          )}
+        </NavLink>
+      ))}
+    </nav>
+  );
+}
+
+// ─── Main Export ──────────────────────────────────────────────────────────────
+export default function Sidebar() {
+  const { appUser, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/login");
+  };
+
+  return (
+    <>
+      <DesktopSidebar appUser={appUser} onSignOut={handleSignOut} />
+      <MobileHeader appUser={appUser} onSignOut={handleSignOut} />
+      <MobileBottomNav />
+    </>
   );
 }
