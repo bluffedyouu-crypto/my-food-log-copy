@@ -8,7 +8,7 @@ import MacroBar from "../ui/MacroBar";
 import FoodSearch from "./FoodSearch";
 import MealCategory from "./MealCategory";
 import FitnessTracker from "./FitnessTracker";
-import { MEAL_LABELS } from "../../constants/meals";
+import { MEAL_LABELS, MEAL_SCHEDULES } from "../../constants/meals";
 
 // ─── Micro config ─────────────────────────────────────────────────────────────
 const MICROS = [
@@ -357,7 +357,7 @@ export default function Dashboard() {
   const isOver    = remaining < 0;
 
   const mealFrequency = appUser?.profile?.mealFrequency || 3;
-  const activeMeals   = Object.keys(MEAL_LABELS).slice(0, mealFrequency + 1);
+  const activeMeals   = MEAL_SCHEDULES[mealFrequency] || MEAL_SCHEDULES[3];
 
   const goalLabel = (appUser?.profile?.goal || "maintenance")
     .replace(/_/g, " ")

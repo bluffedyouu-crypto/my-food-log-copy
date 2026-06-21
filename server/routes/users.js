@@ -33,7 +33,7 @@ router.post("/onboarding", requireAuth, async (c) => {
 
   const {
     goal, age, currentWeight, targetWeight, height, gender,
-    activityLevel, mealFrequency, weightUnit, heightUnit,
+    activityLevel, mealFrequency, weightUnit, heightUnit, weeksToGoal
   } = body;
 
   // Validate required fields
@@ -51,6 +51,7 @@ router.post("/onboarding", requireAuth, async (c) => {
       mealFrequency: mealFrequency ? +mealFrequency : 3,
       weightUnit: weightUnit || "kg",
       heightUnit: heightUnit || "cm",
+      weeksToGoal: weeksToGoal ? +weeksToGoal : null,
     };
 
     const dailyTargets = calculateDailyTargets(profile);

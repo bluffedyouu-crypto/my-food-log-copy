@@ -5,15 +5,7 @@ import { bowlsApi, logsApi } from "../../api/client";
 import Modal from "../ui/Modal";
 import Button from "../ui/Button";
 
-const MEAL_LABELS = {
-  early_fuel:       "Early Fuel",
-  daybreak_nourish: "Daybreak Nourish",
-  morning_boost:    "Morning Boost",
-  midday_reset:     "Midday Reset",
-  afternoon_graze:  "Afternoon Graze",
-  evening_fuel:     "Evening Fuel",
-  twilight_graze:   "Twilight Graze",
-};
+import { MEAL_LABEL_MAP } from "../../constants/meals";
 
 export default function CustomBowlsPanel({ onLog }) {
   const [bowls, setBowls]           = useState([]);
@@ -191,7 +183,7 @@ export default function CustomBowlsPanel({ onLog }) {
               className="w-full px-4 py-3 rounded-xl border border-white/10 text-white focus:border-indigo-500 transition-all"
               style={{ background: "rgba(22,24,45,0.8)" }}
             >
-              {Object.entries(MEAL_LABELS).map(([key, label]) => (
+              {Object.entries(MEAL_LABEL_MAP).map(([key, label]) => (
                 <option key={key} value={key}>{label}</option>
               ))}
             </select>

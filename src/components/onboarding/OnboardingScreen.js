@@ -465,6 +465,22 @@ function MetricsStep({ answers, setAnswer }) {
           />
         </div>
       </div>
+
+      {/* Timeframe (only if not maintenance) */}
+      {answers.goal && answers.goal !== "maintenance" && (
+        <div className="mt-4">
+          <label className="text-sm font-medium text-slate-300 mb-1.5 block">
+            Timeframe to reach goal <span className="text-slate-500 font-normal">(Weeks)</span>
+          </label>
+          <input
+            type="number"
+            placeholder="12"
+            value={answers.weeksToGoal || ""}
+            onChange={(e) => setAnswer("weeksToGoal", e.target.value)}
+            className="w-full px-4 py-3 rounded-xl bg-[#111827] border border-white/10 text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -473,9 +489,9 @@ function FrequencyStep({ value, onChange }) {
   const options = [3, 4, 5, 6];
   const mealNames = {
     3: ["Breakfast", "Lunch", "Dinner"],
-    4: ["Early Fuel", "Breakfast", "Lunch", "Dinner"],
-    5: ["Early Fuel", "Breakfast", "Morning Snack", "Lunch", "Dinner"],
-    6: ["Early Fuel", "Breakfast", "Morning Snack", "Lunch", "Afternoon Graze", "Dinner"],
+    4: ["Breakfast", "Lunch", "Evening Snack", "Dinner"],
+    5: ["Breakfast", "Morning Snack", "Lunch", "Evening Snack", "Dinner"],
+    6: ["Early Fuel", "Breakfast", "Lunch", "Afternoon Graze", "Evening Snack", "Dinner"],
   };
 
   return (

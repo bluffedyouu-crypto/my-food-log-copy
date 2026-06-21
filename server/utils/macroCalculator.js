@@ -73,9 +73,24 @@ function calculateDailyTargets(profile) {
   const multiplier = ACTIVITY_MULTIPLIERS[activityLevel] || 1.2;
   const tdee = bmr * multiplier;
 
-  // Goal adjustment
-  const adjustment = GOAL_ADJUSTMENTS[goal] || 0;
-  const targetCalories = Math.max(1200, Math.round(tdee + adjustment));
+  // Safety floor
+  const minCals = gender === "female" ? 1200 : 1500;
+
+  // Dynamic Goal adjustment based on timeframe
+  let targetCalories = Math.round(tdee);
+  const { targetWeight, weeksToGoal } = profile;
+
+  if (goal !== "maintenance" && targetWeight && weeksToGoal > 0) {
+    const targetWeightKg = weightUnit === "lbs" ? lbsToKg(targetWeight) : targetWeight;
+    const weightDiffKg = targetWeightKg - weightKg; // Negative for weight loss
+    const totalKcalDiff = weightDiffKg * 7700; // ~7700 kcal per 1kg of body mass
+    const dailyAdjustment = totalKcalDiff / (weeksToGoal * 7);
+    targetCalories = Math.max(minCals, Math.round(tdee + dailyAdjustment));
+  } else {
+    // Fallback to static offsets if info is missing
+    const adjustment = GOAL_ADJUSTMENTS[goal] || 0;
+    targetCalories = Math.max(minCals, Math.round(tdee + adjustment));
+  }
 
   // Macro splits
   const splits = MACRO_SPLITS[goal] || MACRO_SPLITS.maintenance;

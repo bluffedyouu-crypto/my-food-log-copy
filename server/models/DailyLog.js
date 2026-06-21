@@ -2,23 +2,25 @@ const mongoose = require("mongoose");
 
 // ─── Meal Category Constants ──────────────────────────────────────────────────
 const MEAL_CATEGORIES = [
-  "early_fuel",        // Pre-breakfast  → "Early Fuel"
-  "daybreak_nourish",  // Breakfast      → "Daybreak Nourish"
-  "morning_boost",     // Mid snack      → "Morning Boost"
-  "midday_reset",      // Lunch          → "Midday Reset"
-  "afternoon_graze",   // Evening snack  → "Afternoon Graze"
-  "evening_fuel",      // Dinner         → "Evening Fuel"
-  "twilight_graze",    // Post-dinner    → "Twilight Graze"
+  "early_fuel",
+  "daybreak_nourish",
+  "morning_boost",
+  "midday_reset",
+  "afternoon_graze",
+  "evening_snack",
+  "evening_fuel",
+  "twilight_graze",
 ];
 
 const MEAL_CATEGORY_LABELS = {
   early_fuel: "Early Fuel",
-  daybreak_nourish: "Daybreak Nourish",
-  morning_boost: "Morning Boost",
-  midday_reset: "Midday Reset",
+  daybreak_nourish: "Breakfast",
+  morning_boost: "Morning Snack",
+  midday_reset: "Lunch",
   afternoon_graze: "Afternoon Graze",
-  evening_fuel: "Evening Fuel",
-  twilight_graze: "Twilight Graze",
+  evening_snack: "Evening Snack",
+  evening_fuel: "Dinner",
+  twilight_graze: "Late Night Graze",
 };
 
 // ─── Logged Food Entry Sub-Schema ─────────────────────────────────────────────

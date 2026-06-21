@@ -21,7 +21,7 @@ export default function SettingsPage() {
   const profile = appUser?.profile || {};
   const targets = appUser?.dailyTargets || {};
 
-  const [profileForm, setProfileForm] = useState({
+  const [profileForm] = useState({
     goal:           profile.goal           || "maintenance",
     currentWeight:  profile.currentWeight  || "",
     targetWeight:   profile.targetWeight   || "",
@@ -187,12 +187,23 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Meal Frequency */}
-            <div>
-              <label className="text-sm font-medium text-slate-400 mb-1.5 block">Meal Frequency</label>
-              <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-indigo-300 font-medium">
-                {profile.mealFrequency || 3} meals / day
+            {/* Meal Frequency & Timeframe */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-slate-400 mb-1.5 block">Meal Frequency</label>
+                <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-indigo-300 font-medium">
+                  {profile.mealFrequency || 3} meals / day
+                </div>
               </div>
+
+              {profile.goal && profile.goal !== "maintenance" && profile.weeksToGoal && (
+                <div>
+                  <label className="text-sm font-medium text-slate-400 mb-1.5 block">Timeframe to Goal</label>
+                  <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-medium">
+                    {profile.weeksToGoal} weeks
+                  </div>
+                </div>
+              )}
             </div>
 
           </div>

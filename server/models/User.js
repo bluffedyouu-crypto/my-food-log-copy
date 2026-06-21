@@ -35,12 +35,13 @@ const profileSchema = new mongoose.Schema(
     gender: { type: String, enum: ["male", "female", "other"] },
     activityLevel: {
       type: String,
-      enum: ["sedentary", "lightly_active", "moderately_active", "very_active"],
+      enum: ["sedentary", "lightly_active", "moderately_active", "very_active", "extremely_active"],
       default: "sedentary",
     },
     mealFrequency: { type: Number, min: 3, max: 6, default: 3 },
     weightUnit: { type: String, enum: ["kg", "lbs"], default: "kg" },
     heightUnit: { type: String, enum: ["cm", "ft"], default: "cm" },
+    weeksToGoal: { type: Number, min: 1 },
   },
   { _id: false }
 );
