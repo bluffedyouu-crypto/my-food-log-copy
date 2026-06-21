@@ -244,28 +244,11 @@ export default function FoodSearch({ selectedMeal, onClose, onLogged }) {
         {showCustomModal && (
           <CustomFoodModal 
             onClose={() => setShowCustomModal(false)}
-            onSaved={(newFood) => {
+            onSaved={(normalizedFood) => {
               setShowCustomModal(false);
               
-              // Map raw database JSON to the format your UI expects
-              const uiFormattedFood = {
-                _id: newFood._id || Date.now().toString(), // Fallback ID
-                name: newFood.dish_name,
-                servingSize: 100,
-                quantities: newFood.quantities || null,
-                per100g: {
-                  calories: newFood.calories_kcal,
-                  protein: newFood.macros.protein_g,
-                  carbs: newFood.macros.carbohydrates_g,
-                  fats: newFood.macros.fat_total_g,
-                  fiber: newFood.macros.dietary_fiber_g,
-                  sugar: newFood.macros.sugars_g,
-                  sodium: 0
-                }
-              };
-
               // Select it automatically so they can log it instantly!
-              setResults([uiFormattedFood]); 
+              setResults([normalizedFood]); 
               setHasSearched(true);
             }}
           />

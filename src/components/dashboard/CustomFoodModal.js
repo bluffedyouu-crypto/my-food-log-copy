@@ -56,8 +56,8 @@ export default function CustomFoodModal({ onClose, onSaved }) {
 
     try {
       // FIXED: Now calling your existing foodApi.createCustom endpoint
-      await foodApi.createCustom(newFoodRecord);
-      onSaved(newFoodRecord); // Tell the parent component we are done
+      const { data } = await foodApi.createCustom(newFoodRecord);
+      onSaved(data.food); // Tell the parent component we are done
     } catch (err) {
       setError(err.message || "Failed to save food.");
     } finally {
