@@ -1,6 +1,6 @@
 const { betterAuth } = require("better-auth");
 const { mongodbAdapter } = require("better-auth/adapters/mongodb");
-const { MongoClient } = require("mongodb");
+const { bearer } = require("better-auth/plugins");
 
 let authInstance = null;
 
@@ -40,6 +40,7 @@ function createAuth(mongoDb) {
       process.env.FRONTEND_URL,
       process.env.FRONTEND_URL ? process.env.FRONTEND_URL.replace(/\/$/, "") : null,
     ].filter(Boolean),
+    plugins: [bearer()],
     advanced: {
       defaultCookieAttributes: {
         sameSite: "none",
