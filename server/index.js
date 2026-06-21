@@ -22,11 +22,11 @@ app.use("*", logger());
 app.use(
   "*",
   cors({
-    origin: [
-      "http://localhost:3000",
-      process.env.FRONTEND_URL,
-    ].filter(Boolean),
-    allowHeaders: ["Content-Type", "Authorization", "Cookie"],
+    origin: (origin) => {
+      // Reflect the requester's origin to ensure CORS passes for cross-domain credentials
+      return origin || "http://localhost:3000";
+    },
+    allowHeaders: ["Content-Type", "Authorization", "Cookie", "Accept"],
     allowMethods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
     exposeHeaders: ["Set-Cookie"],
     credentials: true,
