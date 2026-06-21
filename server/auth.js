@@ -14,6 +14,7 @@ function createAuth(mongoDb) {
     secret: process.env.BETTER_AUTH_SECRET || "fallback-secret-change-in-production",
     baseURL: process.env.BETTER_AUTH_URL || "http://localhost:5000",
     basePath: "/api/auth",
+    trustHost: true,
 
     emailAndPassword: {
       enabled: true,
