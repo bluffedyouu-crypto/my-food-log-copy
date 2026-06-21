@@ -8,6 +8,15 @@ const client = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+// Attach token if available (fallback for browsers blocking 3rd-party cookies)
+client.interceptors.request.use((config) => {
+  const token = localStorage.getItem("better_auth_token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 // Response interceptor for error normalization
 client.interceptors.response.use(
   (res) => res,
