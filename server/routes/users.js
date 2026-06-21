@@ -1,20 +1,9 @@
 const { Hono } = require("hono");
 const User = require("../models/User");
 const { calculateDailyTargets } = require("../utils/macroCalculator");
+const { requireAuth } = require("../middleware/requireAuth");
 
 const router = new Hono();
-
-// ─── Middleware: require auth session ─────────────────────────────────────────
-async function requireAuth(c, next) {
-  const { getAuth } = require("../auth");
-  const auth = getAuth();
-  const session = await auth.api.getSession({ headers: c.req.raw.headers });
-  if (!session?.user) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-  c.set("authUser", session.user);
-  await next();
-}
 
 // GET /api/users/me — get current user profile
 router.get("/me", requireAuth, async (c) => {

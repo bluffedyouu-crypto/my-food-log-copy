@@ -1,17 +1,9 @@
 const { Hono } = require("hono");
 const CustomBowl = require("../models/CustomBowl");
 const { quantityToGrams, nutritionForGrams } = require("../utils/foodParser");
+const { requireAuth } = require("../middleware/requireAuth");
 
 const router = new Hono();
-
-async function requireAuth(c, next) {
-  const { getAuth } = require("../auth");
-  const auth = getAuth();
-  const session = await auth.api.getSession({ headers: c.req.raw.headers });
-  if (!session?.user) return c.json({ error: "Unauthorized" }, 401);
-  c.set("authUser", session.user);
-  await next();
-}
 
 // GET /api/bowls — list user's custom bowls
 router.get("/", requireAuth, async (c) => {

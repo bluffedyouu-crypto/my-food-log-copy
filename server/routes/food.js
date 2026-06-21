@@ -1,17 +1,8 @@
 const { Hono } = require("hono");
 const Food = require("../models/Food");
+const { requireAuth } = require("../middleware/requireAuth");
 
 const router = new Hono();
-
-// ─── Auth middleware ──────────────────────────────────────────────────────────
-async function requireAuth(c, next) {
-  const { getAuth } = require("../auth");
-  const auth = getAuth();
-  const session = await auth.api.getSession({ headers: c.req.raw.headers });
-  if (!session?.user) return c.json({ error: "Unauthorized" }, 401);
-  c.set("authUser", session.user);
-  await next();
-}
 
 // ─── Normalise a Food document into the flat per100g shape ───────────────────
 function normaliseFoodDoc(doc) {
