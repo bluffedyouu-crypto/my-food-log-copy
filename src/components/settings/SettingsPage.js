@@ -123,94 +123,78 @@ export default function SettingsPage() {
         )}
       </AnimatePresence>
 
-      {/* ── Profile & Goals ── */}
+    {/* ── Profile & Goals (Read Only) ── */}
       <motion.div variants={itemVariants}>
         <Card>
-          <h2 className="text-base font-semibold text-white mb-4">Profile &amp; Goals</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base font-semibold text-white">Profile &amp; Goals</h2>
+            <span className="text-xs text-slate-500 bg-white/5 px-2 py-1 rounded-md">Read-only</span>
+          </div>
           <div className="space-y-4">
 
-            {/* Goal */}
-            <div>
-              <label className="text-sm font-medium text-slate-300 mb-2 block">Primary Goal</label>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { value: "fat_loss",    label: "Fat Loss",    emoji: "🔥" },
-                  { value: "muscle_gain", label: "Muscle Gain", emoji: "💪" },
-                  { value: "recomp",      label: "Recomp",      emoji: "⚡" },
-                  { value: "maintenance", label: "Maintenance", emoji: "🎯" },
-                ].map((opt) => (
-                  <button
-                    key={opt.value}
-                    onClick={() => setProfileForm({ ...profileForm, goal: opt.value })}
-                    className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm transition-all ${
-                      profileForm.goal === opt.value
-                        ? "border-indigo-500 bg-indigo-500/15 text-indigo-300"
-                        : "border-white/10 text-slate-400 hover:border-white/20"
-                    }`}
-                  >
-                    <span>{opt.emoji}</span>{opt.label}
-                  </button>
-                ))}
+            {/* Goal & Activity Level */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-slate-400 mb-1.5 block">Primary Goal</label>
+                <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-medium flex items-center gap-2">
+                  {(() => {
+                    const goals = {
+                      fat_loss: { label: "Fat Loss", emoji: "🔥" },
+                      muscle_gain: { label: "Muscle Gain", emoji: "💪" },
+                      recomp: { label: "Recomp", emoji: "⚡" },
+                      maintenance: { label: "Maintenance", emoji: "🎯" },
+                    };
+                    const g = goals[profile.goal] || goals.maintenance;
+                    return <><span className="text-xl">{g.emoji}</span> {g.label}</>;
+                  })()}
+                </div>
               </div>
-            </div>
-
-            {/* Activity Level */}
-            <div>
-              <label className="text-sm font-medium text-slate-300 mb-2 block">Activity Level</label>
-              <select
-                value={profileForm.activityLevel}
-                onChange={(e) => setProfileForm({ ...profileForm, activityLevel: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl bg-[#0d0f1e] border border-white/10 text-white focus:border-indigo-500 transition-all"
-              >
-                <option value="sedentary">Sedentary</option>
-                <option value="lightly_active">Lightly Active</option>
-                <option value="moderately_active">Moderately Active</option>
-                <option value="very_active">Very Active</option>
-              </select>
+              <div>
+                <label className="text-sm font-medium text-slate-400 mb-1.5 block">Activity Level</label>
+                <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-medium flex items-center gap-2">
+                  {(() => {
+                    const levels = {
+                      sedentary: { label: "Sedentary", emoji: "🛋️" },
+                      lightly_active: { label: "Lightly Active", emoji: "🚶" },
+                      moderately_active: { label: "Moderately Active", emoji: "🏋️" },
+                      very_active: { label: "Very Active", emoji: "🏃" },
+                      extremely_active: { label: "Extremely Active", emoji: "🔥" },
+                    };
+                    const l = levels[profile.activityLevel] || { label: profile.activityLevel, emoji: "⚡" };
+                    return <><span className="text-xl">{l.emoji}</span> {l.label}</>;
+                  })()}
+                </div>
+              </div>
             </div>
 
             {/* Weights */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-slate-300 mb-1.5 block">
-                  Current Weight ({profile.weightUnit || "kg"})
+                <label className="text-sm font-medium text-slate-400 mb-1.5 block">
+                  Current Weight
                 </label>
-                <input
-                  type="number"
-                  value={profileForm.currentWeight}
-                  onChange={(e) => setProfileForm({ ...profileForm, currentWeight: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl bg-[#0d0f1e] border border-white/10 text-white focus:border-indigo-500 transition-all"
-                />
+                <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-medium">
+                  {profile.currentWeight || "—"} <span className="text-slate-500 font-normal">{profile.weightUnit || "kg"}</span>
+                </div>
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-300 mb-1.5 block">
-                  Target Weight ({profile.weightUnit || "kg"})
+                <label className="text-sm font-medium text-slate-400 mb-1.5 block">
+                  Target Weight
                 </label>
-                <input
-                  type="number"
-                  value={profileForm.targetWeight}
-                  onChange={(e) => setProfileForm({ ...profileForm, targetWeight: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl bg-[#0d0f1e] border border-white/10 text-white focus:border-indigo-500 transition-all"
-                />
+                <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-medium">
+                  {profile.targetWeight || "—"} <span className="text-slate-500 font-normal">{profile.weightUnit || "kg"}</span>
+                </div>
               </div>
             </div>
 
             {/* Meal Frequency */}
             <div>
-              <label className="text-sm font-medium text-slate-300 mb-2 block">
-                Meal Frequency:{" "}
-                <span className="text-indigo-400">{profileForm.mealFrequency} meals/day</span>
-              </label>
-              <input
-                type="range" min="3" max="6"
-                value={profileForm.mealFrequency}
-                onChange={(e) => setProfileForm({ ...profileForm, mealFrequency: parseInt(e.target.value) })}
-                className="w-full accent-indigo-500"
-              />
-              <div className="flex justify-between text-xs text-slate-500 mt-1">
-                <span>3</span><span>4</span><span>5</span><span>6</span>
+              <label className="text-sm font-medium text-slate-400 mb-1.5 block">Meal Frequency</label>
+              <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-indigo-300 font-medium">
+                {profile.mealFrequency || 3} meals / day
               </div>
             </div>
+
           </div>
         </Card>
       </motion.div>

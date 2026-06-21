@@ -8,6 +8,7 @@ const ACTIVITY_MULTIPLIERS = {
   lightly_active: 1.375,
   moderately_active: 1.55,
   very_active: 1.725,
+  extremely_active: 1.9,
 };
 
 const GOAL_ADJUSTMENTS = {

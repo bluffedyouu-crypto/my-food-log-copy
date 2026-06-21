@@ -61,24 +61,33 @@ function DateNavigator({ activeDate, onChange }) {
   const todayStr = toDateString(new Date());
   const isToday  = activeDate === todayStr;
 
-  // 7-day window ending at today (no future dates)
-  const days = Array.from({ length: 7 }, (_, i) => shiftDate(todayStr, i - 6));
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const numDays = isMobile ? 5 : 7;
+  // numDays-day window ending at today (no future dates)
+  const days = Array.from({ length: numDays }, (_, i) => shiftDate(todayStr, i - (numDays - 1)));
 
   return (
-    <div className="glass-card rounded-2xl px-4 py-3 flex flex-col gap-3 h-full">
+    <div className="glass-card rounded-2xl px-4 py-3 flex flex-col gap-3 h-full overflow-hidden">
       {/* Arrow nav row */}
       <div className="flex items-center justify-between">
         <button
           onClick={() => onChange(shiftDate(activeDate, -1))}
-          className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/8 transition-all"
+          className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/8 transition-all flex-shrink-0"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
 
-        <div className="text-center">
-          <p className="text-sm font-semibold text-white">
+        <div className="text-center min-w-0 px-2">
+          <p className="text-sm font-semibold text-white truncate">
             {isToday ? "Today" : formatDateLabel(activeDate)}
           </p>
           {!isToday && (
@@ -95,7 +104,7 @@ function DateNavigator({ activeDate, onChange }) {
         <button
           onClick={() => { if (!isToday) onChange(shiftDate(activeDate, 1)); }}
           disabled={isToday}
-          className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/8 transition-all disabled:opacity-20 disabled:cursor-not-allowed"
+          className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/8 transition-all disabled:opacity-20 disabled:cursor-not-allowed flex-shrink-0"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -103,8 +112,8 @@ function DateNavigator({ activeDate, onChange }) {
         </button>
       </div>
 
-      {/* Day pill strip — past 7 days only, today is the rightmost */}
-      <div className="flex gap-1.5 overflow-x-auto pb-0.5" style={{ scrollbarWidth: "none" }}>
+      {/* Day pill strip — past N days only, today is the rightmost */}
+      <div className="flex gap-1.5 overflow-x-auto pb-0.5 w-full" style={{ scrollbarWidth: "none" }}>
         {days.map((d) => {
           const isActive = d === activeDate;
           const dayName  = new Date(d + "T12:00:00").toLocaleDateString("en-US", { weekday: "short" });
@@ -115,13 +124,13 @@ function DateNavigator({ activeDate, onChange }) {
             <button
               key={d}
               onClick={() => onChange(d)}
-              className={`flex-shrink-0 flex flex-col items-center px-3 py-2 rounded-xl text-xs transition-all duration-200 ${
+              className={`flex-1 flex-shrink-0 min-w-0 flex flex-col items-center px-2 py-2 rounded-xl text-xs transition-all duration-200 ${
                 isActive
                   ? "bg-indigo-500/25 border border-indigo-500/50 text-indigo-300"
                   : "text-slate-500 hover:text-white hover:bg-white/5 border border-transparent"
               }`}
             >
-              <span className="font-medium">{isT ? "Today" : dayName}</span>
+              <span className="font-medium truncate w-full text-center">{isT ? "Today" : dayName}</span>
               <span className={`text-base font-bold mt-0.5 ${isActive ? "text-white" : ""}`}>{dayNum}</span>
             </button>
           );

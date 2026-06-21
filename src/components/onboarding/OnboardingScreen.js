@@ -67,6 +67,7 @@ const STEPS = [
       { value: "lightly_active",     label: "Lightly Active",     emoji: "🚶", desc: "Light exercise 1–3 days/week" },
       { value: "moderately_active",  label: "Moderately Active",  emoji: "🏋️", desc: "Gym 3–5 days/week" },
       { value: "very_active",        label: "Very Active",        emoji: "🏃", desc: "Hard training 6–7 days/week" },
+      { value: "extremely_active",   label: "Extremely Active",   emoji: "🔥", desc: "Very hard exercise, physical job" },
     ],
   },
   {
