@@ -40,9 +40,6 @@ function createAuth(mongoDb) {
       process.env.FRONTEND_URL ? process.env.FRONTEND_URL.replace(/\/$/, "") : null,
     ].filter(Boolean),
     advanced: {
-      crossSubDomainCookies: {
-        enabled: true,
-      },
       defaultCookieAttributes: {
         sameSite: "none",
         secure: true,
