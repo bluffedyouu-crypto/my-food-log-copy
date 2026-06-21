@@ -8,6 +8,17 @@ let authInstance = null;
  * Initialize Better Auth with MongoDB adapter.
  * Call this after MongoDB connection is established.
  */
+// Helper to extract clean origin (protocol + host) from any URL
+function getOrigin(urlStr) {
+  if (!urlStr) return null;
+  try {
+    const url = new URL(urlStr);
+    return url.origin;
+  } catch (e) {
+    return urlStr.replace(/\/$/, "");
+  }
+}
+
 function createAuth(mongoDb) {
   authInstance = betterAuth({
     database: mongodbAdapter(mongoDb),
@@ -39,6 +50,7 @@ function createAuth(mongoDb) {
       "http://localhost:5000",
       process.env.FRONTEND_URL,
       process.env.FRONTEND_URL ? process.env.FRONTEND_URL.replace(/\/$/, "") : null,
+      getOrigin(process.env.FRONTEND_URL),
     ].filter(Boolean),
     plugins: [bearer()],
     advanced: {
