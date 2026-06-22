@@ -10,7 +10,7 @@ const bowlIngredientSchema = new mongoose.Schema(
 
     // Quantity as entered by user
     quantity: { type: Number, required: true, min: 0.1 },
-    unit: { type: String, enum: ["g", "oz", "serving"], default: "g" },
+    unit: { type: String, default: "g" },  // no enum — accept any unit from the DB
     quantityInGrams: { type: Number, required: true }, // normalized
 
     // Snapshot of nutrition at time of adding (per entered quantity)

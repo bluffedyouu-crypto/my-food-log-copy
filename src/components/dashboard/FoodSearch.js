@@ -19,7 +19,7 @@ async function searchLocalFoods(query) {
 }
 
 // ─── FoodSearch ───────────────────────────────────────────────────────────────
-export default function FoodSearch({ selectedMeal, onClose, onLogged }) {
+export default function FoodSearch({ selectedMeal, onClose, onLogged, activeDate }) {
   const { addEntry } = useLog();
 
   const [query, setQuery]                   = useState("");
@@ -83,6 +83,7 @@ export default function FoodSearch({ selectedMeal, onClose, onLogged }) {
       quantityInGrams,
       per100g:     selectedFood.per100g,
       servingSize: selectedFood.servingSize || 100,
+      date:        activeDate,  // pass the selected date so past-day logging works
     });
 
     setShowQuantityModal(false);

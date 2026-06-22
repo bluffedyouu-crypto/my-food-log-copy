@@ -228,6 +228,7 @@ export default function BowlBuilder() {
           brand: ing.brand,
           quantity: ing.quantity,
           unit: ing.unit,
+          quantityInGrams: ing.quantityInGrams,  // needed for non-standard units
           per100g: ing.per100g,
           servingSize: ing.servingSize,
         })),
@@ -617,16 +618,41 @@ function QuantityModal({ isOpen, food, onClose, onConfirm }) {
   const [quantity, setQuantity] = useState("100");
   const [unit, setUnit] = useState("g");
 
+  // Reset to defaults whenever a new food is opened
+  React.useEffect(() => {
+    if (isOpen) {
+      setQuantity("100");
+      setUnit("g");
+    }
+  }, [isOpen, food]);
+
   if (!food) return null;
 
-  const gramsMap = { g: 1, oz: 28.3495, serving: food.servingSize || 100 };
-  const grams = parseFloat(quantity || 0) * gramsMap[unit];
+  // ── Dynamic units from the database quantities map ─────────────────────────
+  // food.quantities is e.g. { "katori": 150, "cup": 200, "tbsp": 15 }
+  // We filter out null/undefined values just like FoodSearch does.
+  const validQuantities = Object.entries(food.quantities || {})
+    .filter(([, val]) => val !== null && val !== undefined)
+    .map(([key]) => key);
+
+  const availableUnits = ["g", ...validQuantities];
+  const safeUnit = availableUnits.includes(unit) ? unit : "g";
+
+  // Conversion: for "g" → 1 g per unit; for DB quantities → 100g / quantityValue
+  let gramsPerUnit = 1;
+  if (safeUnit !== "g" && food.quantities?.[safeUnit]) {
+    // DB quantities[key] stores the number of grams that 1 unit represents
+    // (same convention the food search uses: 100 / quantities[key] = g per 1 unit)
+    gramsPerUnit = 100 / food.quantities[safeUnit];
+  }
+
+  const grams  = parseFloat(quantity || 0) * gramsPerUnit;
   const factor = grams / 100;
-  const n = food.per100g || {};
-  const calc = (v) => Math.round((v || 0) * factor * 10) / 10;
+  const n      = food.per100g || {};
+  const calc   = (v) => +(((v || 0) * factor).toFixed(1));
 
   const handleConfirm = () => {
-    onConfirm({ quantity: parseFloat(quantity), unit, quantityInGrams: grams });
+    onConfirm({ quantity: parseFloat(quantity), unit: safeUnit, quantityInGrams: grams });
     setQuantity("100");
     setUnit("g");
   };
@@ -649,22 +675,29 @@ function QuantityModal({ isOpen, food, onClose, onConfirm }) {
             className="flex-1 px-4 py-3 rounded-xl bg-[#111827] border border-white/10 text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
           />
           <select
-            value={unit}
-            onChange={(e) => setUnit(e.target.value)}
+            value={safeUnit}
+            onChange={(e) => {
+              const newUnit = e.target.value;
+              setUnit(newUnit);
+              // Reset quantity to a sensible default for the chosen unit
+              setQuantity(newUnit === "g" ? "100" : "1");
+            }}
             className="px-3 py-3 rounded-xl bg-[#111827] border border-white/10 text-slate-300 focus:border-indigo-500 transition-all"
           >
-            <option value="g">grams</option>
-            <option value="oz">oz</option>
-            <option value="serving">serving</option>
+            {availableUnits.map((u) => (
+              <option key={u} value={u}>
+                {u === "g" ? "grams" : u}
+              </option>
+            ))}
           </select>
         </div>
 
         <div className="grid grid-cols-4 gap-2">
           {[
             { label: "Calories", value: calc(n.calories), color: "text-indigo-400" },
-            { label: "Protein", value: calc(n.protein), color: "text-cyan-400" },
-            { label: "Carbs", value: calc(n.carbs), color: "text-amber-400" },
-            { label: "Fats", value: calc(n.fats), color: "text-pink-400" },
+            { label: "Protein",  value: calc(n.protein),  color: "text-cyan-400"   },
+            { label: "Carbs",    value: calc(n.carbs),    color: "text-amber-400"  },
+            { label: "Fats",     value: calc(n.fats),     color: "text-pink-400"   },
           ].map((item) => (
             <div key={item.label} className="bg-white/3 rounded-xl p-2 text-center">
               <p className={`text-base font-bold ${item.color}`}>{item.value}</p>
@@ -672,6 +705,15 @@ function QuantityModal({ isOpen, food, onClose, onConfirm }) {
             </div>
           ))}
         </div>
+
+        {/* Extended micros if available */}
+        {(n.fiber > 0 || n.sodium > 0 || n.sugar > 0) && (
+          <div className="flex gap-3 text-xs text-slate-500 px-1">
+            {n.fiber  > 0 && <span>Fiber: <span className="text-emerald-400">{calc(n.fiber)}g</span></span>}
+            {n.sugar  > 0 && <span>Sugar: <span className="text-pink-400">{calc(n.sugar)}g</span></span>}
+            {n.sodium > 0 && <span>Sodium: <span className="text-orange-400">{calc(n.sodium)}mg</span></span>}
+          </div>
+        )}
 
         <div className="flex gap-3">
           <Button variant="secondary" onClick={onClose} className="flex-1">Cancel</Button>

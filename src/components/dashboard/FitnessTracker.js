@@ -114,26 +114,24 @@ export default function FitnessTracker({
           </div>
         </div>
 
-        {/* Only allow logging for today */}
-        {isToday && (
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setShowLog(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
-            style={{
-              background: "rgba(52,211,153,0.12)",
-              border: "1px solid rgba(52,211,153,0.25)",
-              color: "#34d399",
-              boxShadow: "0 0 12px rgba(52,211,153,0.15)",
-            }}
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-            </svg>
-            Log Activity
-          </motion.button>
-        )}
+        {/* Allow logging for any date (past or today) */}
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setShowLog(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
+          style={{
+            background: "rgba(52,211,153,0.12)",
+            border: "1px solid rgba(52,211,153,0.25)",
+            color: "#34d399",
+            boxShadow: "0 0 12px rgba(52,211,153,0.15)",
+          }}
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+          </svg>
+          Log Activity
+        </motion.button>
       </div>
 
       {loading ? (

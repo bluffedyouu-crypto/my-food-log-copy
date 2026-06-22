@@ -43,11 +43,14 @@ router.post("/", requireAuth, async (c) => {
 
   // Normalize ingredients
   const normalizedIngredients = ingredients.map((ing) => {
-    const quantityInGrams = quantityToGrams(
-      +ing.quantity,
-      ing.unit || "g",
-      ing.servingSize || 100
-    );
+    // For standard units (g/oz/serving) let the server recalculate.
+    // For DB-native units (teaspoon, piece, katori, cup, etc.) the client
+    // already computed the correct grams via food.quantities — trust that value.
+    const KNOWN_UNITS = ["g", "oz", "serving"];
+    const quantityInGrams = KNOWN_UNITS.includes(ing.unit)
+      ? quantityToGrams(+ing.quantity, ing.unit || "g", ing.servingSize || 100)
+      : +(ing.quantityInGrams || +ing.quantity).toFixed(1);
+
     const nutrition = nutritionForGrams(ing.per100g || {}, quantityInGrams);
     return {
       foodItemId: ing.foodItemId || undefined,
@@ -60,6 +63,7 @@ router.post("/", requireAuth, async (c) => {
       nutrition,
     };
   });
+
 
   try {
     const bowl = await CustomBowl.create({
@@ -93,8 +97,11 @@ router.patch("/:id", requireAuth, async (c) => {
     if (body.tags) bowl.tags = body.tags;
 
     if (body.ingredients) {
+      const KNOWN_UNITS = ["g", "oz", "serving"];
       bowl.ingredients = body.ingredients.map((ing) => {
-        const quantityInGrams = quantityToGrams(+ing.quantity, ing.unit || "g", ing.servingSize || 100);
+        const quantityInGrams = KNOWN_UNITS.includes(ing.unit)
+          ? quantityToGrams(+ing.quantity, ing.unit || "g", ing.servingSize || 100)
+          : +(ing.quantityInGrams || +ing.quantity).toFixed(1);
         const nutrition = nutritionForGrams(ing.per100g || {}, quantityInGrams);
         return { ...ing, quantityInGrams, nutrition };
       });

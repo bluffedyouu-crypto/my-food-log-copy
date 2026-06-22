@@ -255,13 +255,13 @@ function WeightLogCard({ weightUnit, activeDate }) {
               value={weight}
               onChange={(e) => setWeight(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleLog()}
-              disabled={!isToday}
+              disabled={false}
               className="flex-1 min-w-0 px-3 py-2 rounded-xl text-sm bg-black/30 border border-white/10 text-white placeholder-slate-600 focus:border-violet-500 transition-all disabled:opacity-40"
             />
             <select
               value={unit}
               onChange={(e) => setUnit(e.target.value)}
-              disabled={!isToday}
+              disabled={false}
               className="px-2 py-2 rounded-xl text-xs bg-black/30 border border-white/10 text-slate-400 focus:border-violet-500 transition-all disabled:opacity-40"
             >
               <option value="kg">kg</option>
@@ -271,7 +271,7 @@ function WeightLogCard({ weightUnit, activeDate }) {
 
           {error && <p className="text-[10px] text-red-400">{error}</p>}
 
-          {isToday ? (
+          {!entry && (
             <button
               onClick={handleLog}
               disabled={!weight || saving}
@@ -281,8 +281,6 @@ function WeightLogCard({ weightUnit, activeDate }) {
             >
               {saving ? "Saving…" : "Log Weight"}
             </button>
-          ) : (
-            <p className="text-[10px] text-slate-700 text-center">No weight logged</p>
           )}
         </>
       )}
@@ -495,6 +493,7 @@ export default function Dashboard() {
           >
             <FoodSearch
               selectedMeal={selectedMeal}
+              activeDate={activeDate}
               onClose={() => { setShowSearch(false); setSelectedMeal(null); }}
               onLogged={() => {
                 isToday ? fetchToday() : fetchByDate(activeDate);
