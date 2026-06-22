@@ -35,7 +35,18 @@ app.use(
 );
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
-app.get("/health", (c) => c.json({ status: "ok", timestamp: new Date().toISOString() }));
+const healthHandler = (c) => {
+  const mongoose = require("mongoose");
+  const dbStatus = mongoose.connection.readyState === 1 ? "connected" : "disconnected";
+  return c.json({
+    status: "ok",
+    database: dbStatus,
+    timestamp: new Date().toISOString(),
+  });
+};
+
+app.get("/health", healthHandler);
+app.get("/api/health", healthHandler);
 
 // ─── Better Auth Handler ──────────────────────────────────────────────────────
 // Better Auth handles all /api/auth/* routes — must use app.all with wildcard
