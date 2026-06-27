@@ -1,6 +1,9 @@
 require("dotenv").config({ path: __dirname + "/.env" });
 
+const fs = require("fs");
+const path = require("path");
 const { serve } = require("@hono/node-server");
+const { serveStatic } = require("@hono/node-server/serve-static");
 const { Hono } = require("hono");
 const { cors } = require("hono/cors");
 const { logger } = require("hono/logger");
@@ -63,8 +66,28 @@ app.route("/api/logs", logRoutes);
 app.route("/api/bowls", bowlRoutes);
 app.route("/api/activity", activityRoutes);
 
-// ─── 404 Handler ─────────────────────────────────────────────────────────────
-app.notFound((c) => c.json({ error: "Route not found" }, 404));
+
+// ─── Frontend Static Hosting & SPA Fallback ──────────────────────────────────
+// 1. Serve the static files from the build folder in the root directory
+app.use(
+  "/*",
+  serveStatic({
+    root: "./build", 
+  })
+);
+
+// 2. Catch-all fallback for React Router (Single Page Application routing)
+app.get("*", (c) => {
+  try {
+    const indexPath = path.join(process.cwd(), "build", "index.html");
+    const html = fs.readFileSync(indexPath, "utf-8");
+    return c.html(html);
+  } catch (error) {
+    console.error("Failed to load index.html:", error);
+    return c.json({ error: "Frontend build not found. Ensure npm run build is working." }, 404);
+  }
+});
+
 
 // ─── Error Handler ────────────────────────────────────────────────────────────
 app.onError((err, c) => {
@@ -81,8 +104,12 @@ async function bootstrap() {
 
     const port = parseInt(process.env.PORT || "4000");
 
-    const server = serve({ fetch: app.fetch, port }, (info) => {
-      console.log(`🚀 Hono server running on http://localhost:${info.port}`);
+    const server = serve({ 
+      fetch: app.fetch, 
+      port: port,
+      hostname: "0.0.0.0" // Bound to 0.0.0.0 for Render!
+    }, (info) => {
+      console.log(`🚀 Hono server running on http://${info.address}:${info.port}`);
     });
 
     // Graceful port-conflict error
