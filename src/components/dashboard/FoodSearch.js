@@ -1,9 +1,10 @@
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLog } from "../../context/LogContext";
+import { useAuth } from "../../context/AuthContext";
 import Modal from "../ui/Modal";
 import Button from "../ui/Button";
-import { MEAL_LABEL_MAP } from "../../constants/meals";
+import { MEAL_LABEL_MAP, MEAL_SCHEDULES } from "../../constants/meals";
 import client from "../../api/client";
 import CustomFoodModal from "./CustomFoodModal"; // Added the missing import
 
@@ -21,13 +22,27 @@ async function searchLocalFoods(query) {
 // ─── FoodSearch ───────────────────────────────────────────────────────────────
 export default function FoodSearch({ selectedMeal, onClose, onLogged, activeDate }) {
   const { addEntry } = useLog();
+  const { appUser } = useAuth();
+
+  // Resolve the user's actual meal schedule so the pill row matches the
+  // "Today's Meals" list below (3–6 entries) instead of showing all 8 labels.
+  const mealFrequency = appUser?.profile?.mealFrequency || 3;
+  const userMealKeys  = useMemo(
+    () => MEAL_SCHEDULES[mealFrequency] || MEAL_SCHEDULES[3],
+    [mealFrequency]
+  );
 
   const [query, setQuery]                   = useState("");
   const [results, setResults]               = useState([]);
   const [searching, setSearching]           = useState(false);
   const [selectedFood, setSelectedFood]     = useState(null);
   const [showQuantityModal, setShowQuantityModal] = useState(false);
-  const [activeMeal, setActiveMeal]         = useState(selectedMeal || "daybreak_nourish");
+  // Default to the meal the user tapped, or fall back to the first meal in their schedule.
+  const [activeMeal, setActiveMeal]         = useState(
+    selectedMeal && userMealKeys.includes(selectedMeal)
+      ? selectedMeal
+      : userMealKeys[0]
+  );
   
   // Added the missing hasSearched state
   const [hasSearched, setHasSearched]       = useState(false); 
@@ -96,21 +111,28 @@ export default function FoodSearch({ selectedMeal, onClose, onLogged, activeDate
     <>
       <div className="glass rounded-2xl p-4">
 
-        {/* Meal selector pills */}
-        <div className="flex gap-2 mb-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-          {Object.entries(MEAL_LABELS).map(([key, label]) => (
-            <button
-              key={key}
-              onClick={() => setActiveMeal(key)}
-              className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                activeMeal === key
-                  ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
-                  : "text-slate-400 hover:text-white hover:bg-white/5 border border-transparent"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
+        {/* Meal selector pills — limited to the meals in the user's schedule */}
+        <div
+          className="flex gap-2 mb-3 overflow-x-auto pb-1 -mx-1 px-1"
+          style={{ scrollbarWidth: "none" }}
+        >
+          {userMealKeys.map((key) => {
+            const label = MEAL_LABELS[key];
+            const isActive = activeMeal === key;
+            return (
+              <button
+                key={key}
+                onClick={() => setActiveMeal(key)}
+                className={`flex-shrink-0 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all min-h-[36px] ${
+                  isActive
+                    ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
+                    : "text-slate-400 hover:text-white hover:bg-white/5 border border-transparent"
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
 
         {/* Search input */}
@@ -128,7 +150,10 @@ export default function FoodSearch({ selectedMeal, onClose, onLogged, activeDate
             placeholder={`Search food to add to ${MEAL_LABELS[activeMeal]}…`}
             value={query}
             onChange={(e) => handleSearch(e.target.value)}
-            className="w-full pl-10 pr-10 py-3 rounded-xl bg-[#111827] border border-white/10 text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+            // Explicit 16px font-size prevents iOS Safari from auto-zooming the
+            // viewport on focus. Belt-and-suspenders with the global CSS rule.
+            style={{ fontSize: "16px" }}
+            className="w-full pl-10 pr-10 py-3 rounded-xl text-base bg-[#111827] border border-white/10 text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
           />
           {query && (
             <button
@@ -335,7 +360,8 @@ function QuantityModal({ isOpen, food, onClose, onConfirm, mealLabel }) {
               onChange={(e) => setQuantity(e.target.value)}
               min="0.1"
               step="0.1"
-              className="flex-1 px-4 py-3 rounded-xl bg-[#111827] border border-white/10 text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+              style={{ fontSize: "16px" }}
+              className="flex-1 px-4 py-3 rounded-xl text-base bg-[#111827] border border-white/10 text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
             />
             <select
               value={safeUnit}
@@ -348,7 +374,8 @@ function QuantityModal({ isOpen, food, onClose, onConfirm, mealLabel }) {
                   setQuantity("1");
                 }
               }}
-              className="px-3 py-3 rounded-xl bg-[#111827] border border-white/10 text-slate-300 focus:border-indigo-500 transition-all"
+              style={{ fontSize: "16px" }}
+              className="px-3 py-3 rounded-xl text-base bg-[#111827] border border-white/10 text-slate-300 focus:border-indigo-500 transition-all"
             >
               {availableUnits.map((u) => (
                 <option key={u} value={u}>

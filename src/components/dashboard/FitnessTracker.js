@@ -406,7 +406,8 @@ function LogActivityModal({ activeDate, onClose, onSaved }) {
                 placeholder="e.g. Morning Run"
                 value={form.label}
                 onChange={(e) => setForm({ ...form, label: e.target.value })}
-                className="w-full px-3 py-2.5 rounded-xl bg-black/30 border border-white/10 text-white text-sm placeholder-slate-600 focus:border-emerald-500 transition-all"
+                style={{ fontSize: "16px" }}
+                className="w-full px-3 py-2.5 rounded-xl bg-black/30 border border-white/10 text-white placeholder-slate-600 focus:border-emerald-500 transition-all"
               />
             </div>
 
@@ -419,7 +420,8 @@ function LogActivityModal({ activeDate, onClose, onSaved }) {
                   placeholder="45"
                   value={form.durationMinutes}
                   onChange={(e) => setForm({ ...form, durationMinutes: e.target.value })}
-                  className="w-full px-3 py-2.5 rounded-xl bg-black/30 border border-white/10 text-white text-sm placeholder-slate-600 focus:border-emerald-500 transition-all"
+                  style={{ fontSize: "16px" }}
+                  className="w-full px-3 py-2.5 rounded-xl bg-black/30 border border-white/10 text-white placeholder-slate-600 focus:border-emerald-500 transition-all"
                 />
               </div>
               <div>
@@ -429,7 +431,8 @@ function LogActivityModal({ activeDate, onClose, onSaved }) {
                   placeholder="300"
                   value={form.caloriesBurned}
                   onChange={(e) => setForm({ ...form, caloriesBurned: e.target.value })}
-                  className="w-full px-3 py-2.5 rounded-xl bg-black/30 border border-white/10 text-white text-sm placeholder-slate-600 focus:border-emerald-500 transition-all"
+                  style={{ fontSize: "16px" }}
+                  className="w-full px-3 py-2.5 rounded-xl bg-black/30 border border-white/10 text-white placeholder-slate-600 focus:border-emerald-500 transition-all"
                 />
               </div>
             </div>

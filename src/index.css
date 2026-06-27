@@ -106,3 +106,68 @@ input:focus, textarea:focus, select:focus { outline: none; }
   border-color: #6366f1 !important;
   box-shadow: 0 0 30px rgba(99,102,241,0.4) !important;
 }
+
+/* ─── iOS zoom-on-focus fix ──────────────────────────────────────────────────── */
+/*
+ * iOS Safari (and iPadOS) auto-zooms the viewport when the user focuses any form
+ * control whose computed font-size is < 16px. Once zoomed, it does NOT unzoom on
+ * blur. The robust, accessibility-friendly fix is to enforce a 16px minimum
+ * font-size on form controls — but ONLY on touch devices, so the desktop
+ * webview that the user already considers perfect stays untouched.
+ *
+ * We layer three matchers for maximum coverage:
+ *   1. `(hover: none) and (pointer: coarse)` — any touch-only device, regardless
+ *      of viewport width (phones in landscape, large Android phones, tablets).
+ *   2. `(max-width: 767px)` — typical phone breakpoint fallback for browsers
+ *      that don't yet support pointer media queries.
+ *   3. `@supports (-webkit-touch-callout: none)` — iOS Safari / iPadOS Safari
+ *      specifically, regardless of viewport (catches iPads that report large
+ *      widths and still zoom on focus).
+ */
+@media (hover: none) and (pointer: coarse),
+       (max-width: 767px) {
+  input,
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="date"],
+  input[type="time"],
+  textarea,
+  select {
+    font-size: 16px !important;
+    line-height: 1.25;
+  }
+}
+
+@supports (-webkit-touch-callout: none) {
+  /* Targets iOS/iPadOS WebKit. macOS Safari also matches, but its inputs
+     are already comfortable at 16px, so this is harmless on desktop Safari. */
+  input,
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="date"],
+  input[type="time"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* Disable double-tap zoom delay on tappable controls — feels much snappier
+   on mobile and prevents the 300ms ghost-tap on iOS. */
+button, a, [role="button"], input, textarea, select {
+  touch-action: manipulation;
+}
+
+/* Respect iOS safe-area insets for full-bleed fixed bars. */
+.pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.pt-safe { padding-top:    env(safe-area-inset-top,    0px); }

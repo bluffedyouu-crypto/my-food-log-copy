@@ -256,13 +256,17 @@ function WeightLogCard({ weightUnit, activeDate }) {
               onChange={(e) => setWeight(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleLog()}
               disabled={false}
-              className="flex-1 min-w-0 px-3 py-2 rounded-xl text-sm bg-black/30 border border-white/10 text-white placeholder-slate-600 focus:border-violet-500 transition-all disabled:opacity-40"
+              // 16px font prevents iOS zoom-on-focus. Visually identical on
+              // desktop since the field already renders ~14–16px elsewhere.
+              style={{ fontSize: "16px" }}
+              className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-black/30 border border-white/10 text-white placeholder-slate-600 focus:border-violet-500 transition-all disabled:opacity-40"
             />
             <select
               value={unit}
               onChange={(e) => setUnit(e.target.value)}
               disabled={false}
-              className="px-2 py-2 rounded-xl text-xs bg-black/30 border border-white/10 text-slate-400 focus:border-violet-500 transition-all disabled:opacity-40"
+              style={{ fontSize: "16px" }}
+              className="px-2 py-2 rounded-xl bg-black/30 border border-white/10 text-slate-400 focus:border-violet-500 transition-all disabled:opacity-40"
             >
               <option value="kg">kg</option>
               <option value="lbs">lbs</option>
@@ -324,6 +328,17 @@ export default function Dashboard() {
   const [showSearch, setShowSearch]     = useState(false);
   const isToday = activeDate === todayStr;
 
+  // Responsive ring size — smaller on phones so the macro stack fits beside it.
+  const [isNarrow, setIsNarrow] = useState(
+    typeof window !== "undefined" && window.innerWidth < 640
+  );
+  useEffect(() => {
+    const onResize = () => setIsNarrow(window.innerWidth < 640);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  const ringSize = isNarrow ? 144 : 164;
+
   useEffect(() => {
     if (isToday) fetchToday();
     else fetchByDate(activeDate);
@@ -369,15 +384,15 @@ export default function Dashboard() {
       className="max-w-5xl mx-auto space-y-4 pb-10"
     >
       {/* ── Header ── */}
-      <motion.div variants={fadeUp} className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-white leading-tight">
+      <motion.div variants={fadeUp} className="flex items-start justify-between gap-3 sm:gap-4">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white leading-tight">
             Good {getGreeting()},{" "}
             <span className="gradient-text">{appUser?.name?.split(" ")[0] || "there"}</span> 👋
           </h1>
-          <p className="text-slate-500 text-sm mt-1">Let's crush your goals today.</p>
+          <p className="text-slate-500 text-xs sm:text-sm mt-1">Let's crush your goals today.</p>
         </div>
-        <span className="flex-shrink-0 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/15 border border-indigo-500/25 text-indigo-300 mt-1">
+        <span className="flex-shrink-0 px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-indigo-500/15 border border-indigo-500/25 text-indigo-300 mt-1 whitespace-nowrap">
           {goalLabel}
         </span>
       </motion.div>
@@ -398,16 +413,16 @@ export default function Dashboard() {
 
       {/* ── Calorie + Macro Summary ── */}
       <motion.div variants={fadeUp}>
-        <div className="glass-card rounded-2xl p-6 relative overflow-hidden">
+        <div className="glass-card rounded-2xl p-4 sm:p-6 relative overflow-hidden">
           <div className="pointer-events-none absolute -top-16 -left-16 w-56 h-56 bg-indigo-600/10 rounded-full blur-3xl" />
           <div className="pointer-events-none absolute -bottom-16 -right-16 w-56 h-56 bg-purple-600/8 rounded-full blur-3xl" />
 
-          <div className="relative flex flex-col md:flex-row items-center gap-8">
+          <div className="relative flex flex-col md:flex-row items-center gap-6 sm:gap-8">
             {/* Calorie ring */}
             <div className="flex flex-col items-center flex-shrink-0">
               <CircularProgress
                 value={calPct}
-                size={164}
+                size={ringSize}
                 strokeWidth={11}
                 color="#6366f1"
                 trackColor="rgba(99,102,241,0.1)"
