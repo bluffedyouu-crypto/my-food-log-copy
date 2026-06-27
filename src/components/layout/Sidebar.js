@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
+import Icon from "../ui/Icon";
 
 const navItems = [
   {
@@ -59,8 +60,8 @@ function DesktopSidebar({ appUser, onSignOut }) {
       {/* Logo */}
       <div className="p-6 border-b border-white/5">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-lg">
-            🥗
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white">
+            <Icon name="salad" size={18} />
           </div>
           <div>
             <h1 className="text-white font-bold text-base leading-tight">MacroSpace</h1>
@@ -123,8 +124,8 @@ function MobileHeader({ appUser, onSignOut }) {
     <>
       <div className="md:hidden fixed top-0 left-0 right-0 z-40 glass-strong border-b border-white/5 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-base">
-            🥗
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white">
+            <Icon name="salad" size={16} />
           </div>
           <span className="text-white font-bold text-base">MacroSpace</span>
         </div>
@@ -215,9 +216,17 @@ export default function Sidebar() {
   const { appUser, signOut } = useAuth();
   const navigate = useNavigate();
 
+  // Sign-out is best-effort end-to-end: the AuthContext already swallows
+  // server-side errors and clears local state, so we also wrap the navigate
+  // call in a finally to guarantee the user lands on /login no matter what.
   const handleSignOut = async () => {
-    await signOut();
-    navigate("/login");
+    try {
+      await signOut();
+    } catch (err) {
+      console.warn("[auth] sign-out failed unexpectedly:", err?.message || err);
+    } finally {
+      navigate("/login", { replace: true });
+    }
   };
 
   return (

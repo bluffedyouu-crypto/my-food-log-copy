@@ -54,7 +54,21 @@ export function AuthProvider({ children }) {
   };
 
   const signOut = async () => {
-    await authApi.signOut();
+    // Best-effort server-side sign-out.
+    // The server call CAN fail for benign reasons:
+    //   • The session cookie was set with `sameSite: "none"; secure: true`
+    //     and the user is on plain http (e.g. localhost) → server returns 401.
+    //   • The session has already expired on the server side.
+    //   • The user is offline / temporarily lost their network connection.
+    // None of those should keep the user logged in on the client. We always
+    // clear local state so the route guards immediately redirect to /login.
+    try {
+      await authApi.signOut();
+    } catch (err) {
+      // Surface in the console so we don't silently mask real bugs, but
+      // never block the local-side sign-out.
+      console.warn("[auth] Server sign-out failed, proceeding with local cleanup:", err?.message || err);
+    }
     localStorage.removeItem("better_auth_token");
     setSession(null);
     setAppUser(null);

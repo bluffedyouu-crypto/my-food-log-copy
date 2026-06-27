@@ -5,6 +5,46 @@ import { useAuth } from "../../context/AuthContext";
 import { userApi } from "../../api/client";
 import Button from "../ui/Button";
 import Card from "../ui/Card";
+import Icon from "../ui/Icon";
+
+// ─── Profile chip taxonomy ──────────────────────────────────────────────────
+// Centralised so the same labels + icons drive Settings, Onboarding, and any
+// future "preview" cards. Keeping these out of the JSX makes the grid render
+// loop trivial and guarantees every chip has the same shape on screen.
+const GOAL_META = {
+  fat_loss:    { label: "Fat Loss",    icon: "flame"    },
+  muscle_gain: { label: "Muscle Gain", icon: "dumbbell" },
+  recomp:      { label: "Recomp",      icon: "zap"      },
+  maintenance: { label: "Maintenance", icon: "target"   },
+};
+const ACTIVITY_META = {
+  sedentary:         { label: "Sedentary",         icon: "sofa"            },
+  lightly_active:    { label: "Lightly Active",    icon: "footprints"      },
+  moderately_active: { label: "Moderately Active", icon: "dumbbell"        },
+  very_active:       { label: "Very Active",       icon: "activity"        },
+  extremely_active:  { label: "Extremely Active",  icon: "mountain"        },
+};
+
+// ─── A single, uniform read-only info chip ──────────────────────────────────
+// Every chip on the Profile & Goals card uses this so they all have identical
+// height, spacing, typography and corner radius — solving the layout drift
+// the user flagged.
+function InfoChip({ label, value, valueIcon, valueClassName = "text-white" }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="text-xs font-medium text-slate-400 leading-none">{label}</span>
+      <div className={`bg-white/5 border border-white/10 rounded-xl px-3.5 py-3 min-h-[52px]
+                       flex items-center gap-2 font-medium text-sm ${valueClassName}`}>
+        {valueIcon && (
+          <span className="flex-shrink-0 text-indigo-300">
+            <Icon name={valueIcon} size={18} />
+          </span>
+        )}
+        <span className="truncate">{value}</span>
+      </div>
+    </div>
+  );
+}
 
 const containerVariants = {
   hidden:  { opacity: 0 },
@@ -107,18 +147,20 @@ export default function SettingsPage() {
           <motion.div
             key="success"
             initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-            className="bg-green-500/15 border border-green-500/30 rounded-xl px-4 py-3 text-green-400 text-sm"
+            className="bg-green-500/15 border border-green-500/30 rounded-xl px-4 py-3 text-green-400 text-sm flex items-center gap-2"
           >
-            ✓ {success}
+            <Icon name="check" size={16} />
+            <span>{success}</span>
           </motion.div>
         )}
         {error && (
           <motion.div
             key="error"
             initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-            className="bg-red-500/15 border border-red-500/30 rounded-xl px-4 py-3 text-red-400 text-sm"
+            className="bg-red-500/15 border border-red-500/30 rounded-xl px-4 py-3 text-red-400 text-sm flex items-center gap-2"
           >
-            {error}
+            <Icon name="warning" size={16} />
+            <span>{error}</span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -130,83 +172,75 @@ export default function SettingsPage() {
             <h2 className="text-base font-semibold text-white">Profile &amp; Goals</h2>
             <span className="text-xs text-slate-500 bg-white/5 px-2 py-1 rounded-md">Read-only</span>
           </div>
-          <div className="space-y-4">
 
-            {/* Goal & Activity Level */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-slate-400 mb-1.5 block">Primary Goal</label>
-                <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-medium flex items-center gap-2">
-                  {(() => {
-                    const goals = {
-                      fat_loss: { label: "Fat Loss", emoji: "🔥" },
-                      muscle_gain: { label: "Muscle Gain", emoji: "💪" },
-                      recomp: { label: "Recomp", emoji: "⚡" },
-                      maintenance: { label: "Maintenance", emoji: "🎯" },
-                    };
-                    const g = goals[profile.goal] || goals.maintenance;
-                    return <><span className="text-xl">{g.emoji}</span> {g.label}</>;
-                  })()}
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-slate-400 mb-1.5 block">Activity Level</label>
-                <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-medium flex items-center gap-2">
-                  {(() => {
-                    const levels = {
-                      sedentary: { label: "Sedentary", emoji: "🛋️" },
-                      lightly_active: { label: "Lightly Active", emoji: "🚶" },
-                      moderately_active: { label: "Moderately Active", emoji: "🏋️" },
-                      very_active: { label: "Very Active", emoji: "🏃" },
-                      extremely_active: { label: "Extremely Active", emoji: "🔥" },
-                    };
-                    const l = levels[profile.activityLevel] || { label: profile.activityLevel, emoji: "⚡" };
-                    return <><span className="text-xl">{l.emoji}</span> {l.label}</>;
-                  })()}
-                </div>
-              </div>
-            </div>
+          {/*
+            Uniform 6-chip grid:
+              ┌──────────────┬──────────────┐
+              │ Goal         │ Activity     │
+              ├──────────────┼──────────────┤
+              │ Current wt.  │ Target wt.   │
+              ├──────────────┼──────────────┤
+              │ Meals/day    │ Timeframe    │
+              └──────────────┴──────────────┘
+            Every cell uses <InfoChip /> so they share padding, height,
+            corner radius and typography. The "Timeframe" cell shows
+            "—" when not applicable so the grid never breaks.
+          */}
+          {(() => {
+            const goal     = GOAL_META[profile.goal]            || GOAL_META.maintenance;
+            const activity = ACTIVITY_META[profile.activityLevel] || { label: profile.activityLevel || "—", icon: "activity" };
+            const weightUnit = profile.weightUnit || "kg";
+            const showTimeframe = profile.goal && profile.goal !== "maintenance";
 
-            {/* Weights */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-slate-400 mb-1.5 block">
-                  Current Weight
-                </label>
-                <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-medium">
-                  {profile.currentWeight || "—"} <span className="text-slate-500 font-normal">{profile.weightUnit || "kg"}</span>
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-slate-400 mb-1.5 block">
-                  Target Weight
-                </label>
-                <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-medium">
-                  {profile.targetWeight || "—"} <span className="text-slate-500 font-normal">{profile.weightUnit || "kg"}</span>
-                </div>
-              </div>
-            </div>
+            return (
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                <InfoChip label="Primary Goal"   value={goal.label}     valueIcon={goal.icon} />
+                <InfoChip label="Activity Level" value={activity.label} valueIcon={activity.icon} />
 
-            {/* Meal Frequency & Timeframe */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-slate-400 mb-1.5 block">Meal Frequency</label>
-                <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-indigo-300 font-medium">
-                  {profile.mealFrequency || 3} meals / day
-                </div>
+                <InfoChip
+                  label="Current Weight"
+                  value={
+                    <>
+                      {profile.currentWeight || "—"}{" "}
+                      <span className="text-slate-500 font-normal">{weightUnit}</span>
+                    </>
+                  }
+                />
+                <InfoChip
+                  label="Target Weight"
+                  value={
+                    <>
+                      {profile.targetWeight || "—"}{" "}
+                      <span className="text-slate-500 font-normal">{weightUnit}</span>
+                    </>
+                  }
+                />
+
+                <InfoChip
+                  label="Meal Frequency"
+                  value={
+                    <>
+                      {profile.mealFrequency || 3}{" "}
+                      <span className="text-slate-500 font-normal">meals / day</span>
+                    </>
+                  }
+                />
+                <InfoChip
+                  label="Timeframe to Goal"
+                  value={
+                    showTimeframe && profile.weeksToGoal ? (
+                      <>
+                        {profile.weeksToGoal}{" "}
+                        <span className="text-slate-500 font-normal">weeks</span>
+                      </>
+                    ) : (
+                      <span className="text-slate-500 font-normal">—</span>
+                    )
+                  }
+                />
               </div>
-
-              {profile.goal && profile.goal !== "maintenance" && profile.weeksToGoal && (
-                <div>
-                  <label className="text-sm font-medium text-slate-400 mb-1.5 block">Timeframe to Goal</label>
-                  <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-medium">
-                    {profile.weeksToGoal} weeks
-                  </div>
-                </div>
-              )}
-            </div>
-
-          </div>
+            );
+          })()}
         </Card>
       </motion.div>
 
@@ -233,8 +267,9 @@ export default function SettingsPage() {
 
           {useManual ? (
             <div className="space-y-3">
-              <p className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
-                ⚠️ Manual override active — these values replace calculated targets.
+              <p className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2 flex items-start gap-2">
+                <Icon name="warning" size={14} className="mt-0.5 flex-shrink-0" />
+                <span>Manual override active — these values replace calculated targets.</span>
               </p>
               <div className="grid grid-cols-2 gap-3">
                 {[
@@ -313,7 +348,10 @@ export default function SettingsPage() {
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="text-center mb-5">
-                  <div className="text-4xl mb-3">🔄</div>
+                  <div className="w-12 h-12 rounded-2xl mx-auto mb-3 flex items-center justify-center text-indigo-300"
+                    style={{ background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.25)" }}>
+                    <Icon name="refresh" size={22} />
+                  </div>
                   <h3 className="text-lg font-bold text-white">Reset &amp; Recalculate?</h3>
                   <p className="text-slate-400 text-sm mt-2">
                     This will restart the onboarding flow so you can enter fresh metrics.

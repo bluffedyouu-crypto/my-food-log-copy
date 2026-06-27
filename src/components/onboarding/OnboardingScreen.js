@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { userApi } from "../../api/client";
 import { useAuth } from "../../context/AuthContext";
 import Button from "../ui/Button";
+import Icon from "../ui/Icon";
 
 // ─── Animation Variants ───────────────────────────────────────────────────────
 const questionVariants = {
@@ -39,10 +40,10 @@ const STEPS = [
     subtitle: "This shapes your entire nutritional blueprint.",
     type: "choice",
     options: [
-      { value: "fat_loss",    label: "Fat Loss",         emoji: "🔥", desc: "Caloric deficit, high protein" },
-      { value: "muscle_gain", label: "Lean Muscle Gain", emoji: "💪", desc: "Caloric surplus, balanced macros" },
-      { value: "recomp",      label: "Body Recomp",      emoji: "⚡", desc: "Maintain weight, change composition" },
-      { value: "maintenance", label: "Maintenance",      emoji: "🎯", desc: "Sustain current physique" },
+      { value: "fat_loss",    label: "Fat Loss",         icon: "flame",    desc: "Caloric deficit, high protein" },
+      { value: "muscle_gain", label: "Lean Muscle Gain", icon: "dumbbell", desc: "Caloric surplus, balanced macros" },
+      { value: "recomp",      label: "Body Recomp",      icon: "zap",      desc: "Maintain weight, change composition" },
+      { value: "maintenance", label: "Maintenance",      icon: "target",   desc: "Sustain current physique" },
     ],
   },
   {
@@ -63,11 +64,11 @@ const STEPS = [
     subtitle: "Be honest — this directly impacts your calorie target.",
     type: "choice",
     options: [
-      { value: "sedentary",          label: "Sedentary",          emoji: "🛋️", desc: "Desk job, little to no exercise" },
-      { value: "lightly_active",     label: "Lightly Active",     emoji: "🚶", desc: "Light exercise 1–3 days/week" },
-      { value: "moderately_active",  label: "Moderately Active",  emoji: "🏋️", desc: "Gym 3–5 days/week" },
-      { value: "very_active",        label: "Very Active",        emoji: "🏃", desc: "Hard training 6–7 days/week" },
-      { value: "extremely_active",   label: "Extremely Active",   emoji: "🔥", desc: "Very hard exercise, physical job" },
+      { value: "sedentary",          label: "Sedentary",          icon: "sofa",       desc: "Desk job, little to no exercise" },
+      { value: "lightly_active",     label: "Lightly Active",     icon: "footprints", desc: "Light exercise 1–3 days/week" },
+      { value: "moderately_active",  label: "Moderately Active",  icon: "dumbbell",   desc: "Gym 3–5 days/week" },
+      { value: "very_active",        label: "Very Active",        icon: "activity",   desc: "Hard training 6–7 days/week" },
+      { value: "extremely_active",   label: "Extremely Active",   icon: "mountain",   desc: "Very hard exercise, physical job" },
     ],
   },
   {
@@ -278,7 +279,7 @@ function ChoiceStep({ options, value, onChange }) {
             }
           `}
         >
-          <span className="text-2xl">{opt.emoji}</span>
+          <span className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-indigo-300" style={{ background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.22)" }}><Icon name={opt.icon} size={20} /></span>
           <div className="flex-1">
             <p className={`font-semibold ${value === opt.value ? "text-indigo-300" : "text-white"}`}>
               {opt.label}
@@ -310,8 +311,8 @@ function UnitsStep({ answers, setAnswer }) {
         <p className="text-sm font-medium text-slate-300 mb-3">Preferred Weight Unit</p>
         <div className="grid grid-cols-2 gap-3">
           {[
-            { value: "kg",  label: "Kilograms", sub: "kg", emoji: "🌍" },
-            { value: "lbs", label: "Pounds",    sub: "lbs", emoji: "🇺🇸" },
+            { value: "kg",  label: "Kilograms", sub: "kg", icon: "scale" },
+            { value: "lbs", label: "Pounds",    sub: "lbs", icon: "scale" },
           ].map((opt) => (
             <motion.button
               key={opt.value}
@@ -323,7 +324,7 @@ function UnitsStep({ answers, setAnswer }) {
                   : "border-white/10 bg-white/3 hover:border-white/20"
               }`}
             >
-              <span className="text-2xl">{opt.emoji}</span>
+              <span className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-indigo-300" style={{ background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.22)" }}><Icon name={opt.icon} size={20} /></span>
               <div>
                 <p className={`font-semibold ${answers.weightUnit === opt.value ? "text-indigo-300" : "text-white"}`}>
                   {opt.label}
@@ -348,8 +349,8 @@ function UnitsStep({ answers, setAnswer }) {
         <p className="text-sm font-medium text-slate-300 mb-3">Preferred Height Unit</p>
         <div className="grid grid-cols-2 gap-3">
           {[
-            { value: "cm", label: "Centimetres", sub: "cm",   emoji: "📏" },
-            { value: "ft", label: "Feet / Inches", sub: "ft/in", emoji: "📐" },
+            { value: "cm", label: "Centimetres", sub: "cm",   icon: "ruler" },
+            { value: "ft", label: "Feet / Inches", sub: "ft/in", icon: "ruler" },
           ].map((opt) => (
             <motion.button
               key={opt.value}
@@ -361,7 +362,7 @@ function UnitsStep({ answers, setAnswer }) {
                   : "border-white/10 bg-white/3 hover:border-white/20"
               }`}
             >
-              <span className="text-2xl">{opt.emoji}</span>
+              <span className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-indigo-300" style={{ background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.22)" }}><Icon name={opt.icon} size={20} /></span>
               <div>
                 <p className={`font-semibold ${answers.heightUnit === opt.value ? "text-indigo-300" : "text-white"}`}>
                   {opt.label}

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
 import { useLog } from "../../context/LogContext";
@@ -8,6 +8,7 @@ import MacroBar from "../ui/MacroBar";
 import FoodSearch from "./FoodSearch";
 import MealCategory from "./MealCategory";
 import FitnessTracker from "./FitnessTracker";
+import Icon from "../ui/Icon";
 import { MEAL_LABELS, MEAL_SCHEDULES } from "../../constants/meals";
 
 // ─── Micro config ─────────────────────────────────────────────────────────────
@@ -56,37 +57,59 @@ function formatDateLabel(dateStr) {
 }
 
 // ─── Date Navigator ───────────────────────────────────────────────────────────
-// Only shows past days + today. Future dates are completely hidden.
+// Horizontally scrollable strip of the last N days ending at Today.
+// User can drag/scroll left to access older dates; the strip auto-scrolls
+// to Today on mount so the most-recent days are visible by default.
 function DateNavigator({ activeDate, onChange }) {
   const todayStr = toDateString(new Date());
   const isToday  = activeDate === todayStr;
 
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  // Show ~60 past days + today by default. The strip is horizontally
+  // scrollable, so the user can drag back through any of these. We chose
+  // 60 days because it covers the vast majority of "look at what I logged"
+  // queries without paying the cost of rendering thousands of buttons.
+  const NUM_DAYS = 60;
+  const days = useMemo(
+    () => Array.from({ length: NUM_DAYS }, (_, i) => shiftDate(todayStr, i - (NUM_DAYS - 1))),
+    [todayStr]
+  );
 
+  // Ref to the scroll container so we can keep Today/active date visible.
+  const stripRef = useRef(null);
+  const activeRef = useRef(null);
+
+  // On mount → snap to the rightmost (Today) pill.
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    if (stripRef.current) {
+      stripRef.current.scrollLeft = stripRef.current.scrollWidth;
+    }
   }, []);
 
-  const numDays = isMobile ? 5 : 7;
-  // numDays-day window ending at today (no future dates)
-  const days = Array.from({ length: numDays }, (_, i) => shiftDate(todayStr, i - (numDays - 1)));
+  // When the active date changes (e.g. via arrow buttons), scroll the
+  // active pill into view smoothly.
+  useEffect(() => {
+    if (activeRef.current) {
+      activeRef.current.scrollIntoView({
+        behavior: "smooth",
+        inline: "center",
+        block: "nearest",
+      });
+    }
+  }, [activeDate]);
 
   return (
-    <div className="glass-card rounded-2xl px-4 py-3 flex flex-col gap-3 h-full overflow-hidden">
+    <div className="glass-card rounded-2xl px-4 py-3 flex flex-col gap-3 h-full w-full min-w-0 overflow-hidden">
       {/* Arrow nav row */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between min-w-0">
         <button
           onClick={() => onChange(shiftDate(activeDate, -1))}
           className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/8 transition-all flex-shrink-0"
+          aria-label="Previous day"
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
+          <Icon name="chevron-left" size={16} />
         </button>
 
-        <div className="text-center min-w-0 px-2">
+        <div className="text-center min-w-0 px-2 flex-1">
           <p className="text-sm font-semibold text-white truncate">
             {isToday ? "Today" : formatDateLabel(activeDate)}
           </p>
@@ -105,26 +128,53 @@ function DateNavigator({ activeDate, onChange }) {
           onClick={() => { if (!isToday) onChange(shiftDate(activeDate, 1)); }}
           disabled={isToday}
           className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/8 transition-all disabled:opacity-20 disabled:cursor-not-allowed flex-shrink-0"
+          aria-label="Next day"
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
+          <Icon name="chevron-right" size={16} />
         </button>
       </div>
 
-      {/* Day pill strip — past N days only, today is the rightmost */}
-      <div className="flex gap-1.5 overflow-x-auto pb-0.5 w-full" style={{ scrollbarWidth: "none" }}>
+      {/* Horizontally scrollable day-pill strip — Today is rightmost. */}
+      {/*
+        `w-full min-w-0 max-w-full` triple-guards the strip so it can never
+        push past its parent: w-full sets the preferred width to 100%, min-w-0
+        defeats the flex-item's default min-width:auto, and max-w-full clips
+        any residual overflow. `overflow-x-auto` then turns the 60-pill row
+        into a horizontally swipable strip inside that constrained box.
+
+        `scrollPaddingRight` is the key to keeping the Today pill from being
+        chopped by the card's overflow-hidden edge. Without it, `snap-end` on
+        Today would align the pill's right border *exactly* with the strip's
+        right edge — leaving its highlight ring flush against the card's
+        clip rect. The 14px scroll-padding moves the snap target inward, so
+        Today comes to rest with a clean ~14px buffer between its right edge
+        and the card edge. We also bump the right *visual* padding to match
+        so the layout looks balanced regardless of snap state.
+      */}
+      <div
+        ref={stripRef}
+        className="flex gap-1.5 overflow-x-auto pb-1 -ml-1 pl-1 pr-3 snap-x snap-mandatory w-full min-w-0 max-w-full"
+        style={{
+          scrollbarWidth: "none",
+          WebkitOverflowScrolling: "touch",
+          overscrollBehaviorX: "contain",
+          scrollPaddingRight: "14px",
+          scrollPaddingLeft:  "4px",
+        }}
+      >
         {days.map((d) => {
           const isActive = d === activeDate;
-          const dayName  = new Date(d + "T12:00:00").toLocaleDateString("en-US", { weekday: "short" });
-          const dayNum   = new Date(d + "T12:00:00").getDate();
+          const dateObj  = new Date(d + "T12:00:00");
+          const dayName  = dateObj.toLocaleDateString("en-US", { weekday: "short" });
+          const dayNum   = dateObj.getDate();
           const isT      = d === todayStr;
 
           return (
             <button
               key={d}
+              ref={isActive ? activeRef : null}
               onClick={() => onChange(d)}
-              className={`flex-1 flex-shrink-0 min-w-0 flex flex-col items-center px-2 py-2 rounded-xl text-xs transition-all duration-200 ${
+              className={`flex-shrink-0 w-12 flex flex-col items-center px-1 py-2 rounded-xl text-xs transition-all duration-200 snap-end ${
                 isActive
                   ? "bg-indigo-500/25 border border-indigo-500/50 text-indigo-300"
                   : "text-slate-500 hover:text-white hover:bg-white/5 border border-transparent"
@@ -203,9 +253,9 @@ function WeightLogCard({ weightUnit, activeDate }) {
     <div className="glass-card rounded-2xl px-4 py-3 flex flex-col justify-between h-full gap-3">
       {/* Header */}
       <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-xl flex items-center justify-center text-base flex-shrink-0"
+        <div className="w-8 h-8 rounded-xl flex items-center justify-center text-violet-300 flex-shrink-0"
           style={{ background: "rgba(167,139,250,0.12)", border: "1px solid rgba(167,139,250,0.2)" }}>
-          ⚖️
+          <Icon name="scale" size={16} />
         </div>
         <div className="min-w-0">
           <p className="text-sm font-semibold text-white leading-tight">Weight</p>
@@ -234,7 +284,7 @@ function WeightLogCard({ weightUnit, activeDate }) {
             whileTap={{ scale: 0.98 }}
             onClick={handleRemove}
             disabled={removing}
-            className="w-full py-2 rounded-xl text-xs font-semibold transition-all duration-200 disabled:opacity-50"
+            className="w-full py-2 rounded-xl text-xs font-semibold transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-1.5"
             style={{
               background: "rgba(185,28,28,0.15)",
               border: "1px solid rgba(185,28,28,0.35)",
@@ -242,7 +292,14 @@ function WeightLogCard({ weightUnit, activeDate }) {
               boxShadow: "0 0 10px rgba(185,28,28,0.2)",
             }}
           >
-            {removing ? "Removing…" : "🗑 Remove Log"}
+            {removing ? (
+              "Removing…"
+            ) : (
+              <>
+                <Icon name="trash" size={14} />
+                Remove Log
+              </>
+            )}
           </motion.button>
         </>
       ) : (
@@ -398,14 +455,23 @@ export default function Dashboard() {
       </motion.div>
 
       {/* ── Date Navigator + Weight Log — equal height via items-stretch ── */}
+      {/*
+        `min-w-0` is critical on every wrapper below. By default a grid/flex
+        item has `min-width: auto`, which means it refuses to shrink below its
+        content's intrinsic width. The DateNavigator contains 60 fixed-width
+        day pills (~2900 px total), so without `min-w-0` the grid column will
+        balloon out past the viewport instead of letting the inner strip
+        scroll. With `min-w-0` the column stays at its grid-defined width and
+        the strip's `overflow-x-auto` finally takes effect.
+      */}
       <motion.div variants={fadeUp} className="grid grid-cols-1 md:grid-cols-3 gap-3 items-stretch">
-        <div className="md:col-span-2 flex">
-          <div className="flex-1">
+        <div className="md:col-span-2 flex min-w-0">
+          <div className="flex-1 min-w-0">
             <DateNavigator activeDate={activeDate} onChange={handleDateChange} />
           </div>
         </div>
-        <div className="flex">
-          <div className="flex-1">
+        <div className="flex min-w-0">
+          <div className="flex-1 min-w-0">
             <WeightLogCard weightUnit={appUser?.profile?.weightUnit} activeDate={activeDate} />
           </div>
         </div>
@@ -541,7 +607,7 @@ export default function Dashboard() {
               key={mealKey}
               mealKey={mealKey}
               label={info.label}
-              emoji={info.emoji}
+              icon={info.icon}
               time={info.time}
               entries={entries}
               totals={mealTotals}

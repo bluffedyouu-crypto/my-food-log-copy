@@ -1,17 +1,18 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { activityApi } from "../../api/client";
+import Icon from "../ui/Icon";
 
 // ─── Activity type config ─────────────────────────────────────────────────────
 const ACTIVITY_TYPES = [
-  { value: "gym",      label: "Gym",      emoji: "🏋️" },
-  { value: "running",  label: "Running",  emoji: "🏃" },
-  { value: "walking",  label: "Walking",  emoji: "🚶" },
-  { value: "cycling",  label: "Cycling",  emoji: "🚴" },
-  { value: "swimming", label: "Swimming", emoji: "🏊" },
-  { value: "sports",   label: "Sports",   emoji: "⚽" },
-  { value: "yoga",     label: "Yoga",     emoji: "🧘" },
-  { value: "other",    label: "Other",    emoji: "💪" },
+  { value: "gym",      label: "Gym",      icon: "dumbbell"       },
+  { value: "running",  label: "Running",  icon: "activity"       },
+  { value: "walking",  label: "Walking",  icon: "footprints"     },
+  { value: "cycling",  label: "Cycling",  icon: "bike"           },
+  { value: "swimming", label: "Swimming", icon: "waves"          },
+  { value: "sports",   label: "Sports",   icon: "activity"       },
+  { value: "yoga",     label: "Yoga",     icon: "flame-kindling" },
+  { value: "other",    label: "Other",    icon: "dumbbell"       },
 ];
 
 const ACTIVITY_TARGETS = {
@@ -104,7 +105,7 @@ export default function FitnessTracker({
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-xl flex items-center justify-center text-base"
             style={{ background: "rgba(52,211,153,0.12)", border: "1px solid rgba(52,211,153,0.2)" }}>
-            🏃
+            <Icon name="activity" size={18} className="text-emerald-300" />
           </div>
           <div>
             <p className="text-sm font-semibold text-white">Fitness</p>
@@ -152,8 +153,9 @@ export default function FitnessTracker({
 
             <div className="rounded-xl p-3 text-center"
               style={{ background: "rgba(251,191,36,0.07)", border: "1px solid rgba(251,191,36,0.15)" }}>
-              <p className="text-xl font-bold text-amber-400">
-                {streak}<span className="text-sm ml-0.5">🔥</span>
+              <p className="text-xl font-bold text-amber-400 inline-flex items-center justify-center gap-1">
+                {streak}
+                <Icon name="flame" size={14} className="text-amber-400" />
               </p>
               <p className="text-[10px] text-slate-500 mt-0.5">Day streak</p>
             </div>
@@ -253,7 +255,9 @@ export default function FitnessTracker({
                       className="flex items-center gap-2 py-1.5 px-2 rounded-xl group"
                       style={{ background: "rgba(255,255,255,0.03)" }}
                     >
-                      <span className="text-base flex-shrink-0">{type?.emoji || "💪"}</span>
+                      <span className="text-emerald-300 flex-shrink-0">
+                        <Icon name={type?.icon || "dumbbell"} size={16} />
+                      </span>
 
                       <div className="flex-1 min-w-0">
                         <p className="text-xs text-slate-300 truncate font-medium">
@@ -391,7 +395,7 @@ function LogActivityModal({ activeDate, onClose, onSaved }) {
                         : "border-white/8 text-slate-500 hover:border-white/20"
                     }`}
                   >
-                    <span className="text-lg">{t.emoji}</span>
+                    <Icon name={t.icon} size={18} />
                     <span className="text-[10px]">{t.label}</span>
                   </button>
                 ))}

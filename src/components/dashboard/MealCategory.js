@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLog } from "../../context/LogContext";
+import Icon from "../ui/Icon";
 
 export default function MealCategory({
-  mealKey, label, emoji, time, entries, totals, onAddFood,
+  mealKey, label, icon, time, entries, totals, onAddFood,
 }) {
   const { deleteEntry } = useLog();
   const [expanded, setExpanded] = useState(false);
@@ -28,10 +29,10 @@ export default function MealCategory({
           className="flex items-center gap-3 flex-1 min-w-0 text-left hover:opacity-80 transition-opacity"
         >
           <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-lg flex-shrink-0"
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-indigo-300 flex-shrink-0"
             style={{ background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.15)" }}
           >
-            {emoji}
+            <Icon name={icon} size={18} />
           </div>
 
           <div className="flex-1 min-w-0">

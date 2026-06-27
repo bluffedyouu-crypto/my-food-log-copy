@@ -12,6 +12,7 @@ import Dashboard from "./components/dashboard/Dashboard";
 import BowlBuilder from "./components/bowl/BowlBuilder";
 import AnalyticsPage from "./components/analytics/AnalyticsPage";
 import SettingsPage from "./components/settings/SettingsPage";
+import Icon from "./components/ui/Icon";
 
 // ─── Route Guards ─────────────────────────────────────────────────────────────
 function RequireAuth({ children }) {
@@ -43,8 +44,8 @@ function LoadingScreen() {
   return (
     <div className="min-h-screen bg-black flex items-center justify-center">
       <div className="flex flex-col items-center gap-4">
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-2xl animate-pulse">
-          🥗
+        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white animate-pulse">
+          <Icon name="salad" size={24} />
         </div>
         <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
       </div>

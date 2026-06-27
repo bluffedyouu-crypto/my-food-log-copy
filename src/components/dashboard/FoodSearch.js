@@ -4,6 +4,7 @@ import { useLog } from "../../context/LogContext";
 import { useAuth } from "../../context/AuthContext";
 import Modal from "../ui/Modal";
 import Button from "../ui/Button";
+import Icon from "../ui/Icon";
 import { MEAL_LABEL_MAP, MEAL_SCHEDULES } from "../../constants/meals";
 import client from "../../api/client";
 import CustomFoodModal from "./CustomFoodModal"; // Added the missing import
@@ -242,7 +243,10 @@ export default function FoodSearch({ selectedMeal, onClose, onLogged, activeDate
               animate={{ opacity: 1 }} 
               className="text-center py-8"
             >
-              <div className="text-4xl mb-3">🍽️</div>
+              <div className="w-12 h-12 rounded-2xl mx-auto mb-3 flex items-center justify-center text-slate-500"
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <Icon name="utensils" size={22} />
+              </div>
               <p className="text-slate-400 text-sm mb-4">We couldn't find "{query}" in our database.</p>
               <button 
                 onClick={() => setShowCustomModal(true)}

@@ -1,16 +1,25 @@
 /**
  * Single source of truth for meal category labels.
  * Import this everywhere instead of defining inline.
+ *
+ * Each entry exposes:
+ *   • label : human-readable name
+ *   • icon  : registry key for `<Icon name="…" />` — renders a platform-
+ *             consistent SVG via lucide-react. Use this in new UI code.
+ *   • emoji : legacy emoji glyph, retained for any data flow that still
+ *             expects a string (e.g. notification subjects). Avoid using
+ *             this in JSX — it renders differently per OS.
+ *   • time  : a friendly time hint (5–7 AM, etc.) shown beneath the label.
  */
 export const MEAL_LABELS = {
-  early_fuel:       { label: "Early Fuel",       emoji: "🌙", time: "5–7 AM"   },
-  daybreak_nourish: { label: "Breakfast",        emoji: "🌅", time: "7–9 AM"   },
-  morning_boost:    { label: "Morning Snack",    emoji: "☕", time: "10–11 AM" },
-  midday_reset:     { label: "Lunch",            emoji: "🌞", time: "12–2 PM"  },
-  afternoon_graze:  { label: "Afternoon Graze",  emoji: "🍃", time: "3–5 PM"   },
-  evening_snack:    { label: "Evening Snack",    emoji: "🍪", time: "4–6 PM"   },
-  evening_fuel:     { label: "Dinner",           emoji: "🌆", time: "6–8 PM"   },
-  twilight_graze:   { label: "Late Night Graze", emoji: "🌙", time: "9–10 PM"  },
+  early_fuel:       { label: "Early Fuel",       icon: "moon",    emoji: "🌙", time: "5–7 AM"   },
+  daybreak_nourish: { label: "Breakfast",        icon: "sunrise", emoji: "🌅", time: "7–9 AM"   },
+  morning_boost:    { label: "Morning Snack",    icon: "coffee",  emoji: "☕", time: "10–11 AM" },
+  midday_reset:     { label: "Lunch",            icon: "sun",     emoji: "🌞", time: "12–2 PM"  },
+  afternoon_graze:  { label: "Afternoon Graze",  icon: "leaf",    emoji: "🍃", time: "3–5 PM"   },
+  evening_snack:    { label: "Evening Snack",    icon: "cookie",  emoji: "🍪", time: "4–6 PM"   },
+  evening_fuel:     { label: "Dinner",           icon: "sunset",  emoji: "🌆", time: "6–8 PM"   },
+  twilight_graze:   { label: "Late Night Graze", icon: "moon",    emoji: "🌙", time: "9–10 PM"  },
 };
 
 /** Exact meal mapping by frequency */

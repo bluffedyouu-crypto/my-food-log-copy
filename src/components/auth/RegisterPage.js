@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
 import Button from "../ui/Button";
 import Input from "../ui/Input";
+import Icon from "../ui/Icon";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -52,8 +53,8 @@ export default function RegisterPage() {
         transition={{ duration: 0.5, ease: "easeOut" }}
       >
         <div className="text-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-2xl mx-auto mb-4">
-            🥗
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white mx-auto mb-4">
+            <Icon name="salad" size={26} />
           </div>
           <h1 className="text-2xl font-bold text-white">Create your account</h1>
           <p className="text-slate-400 mt-1">Start your nutrition journey today</p>
