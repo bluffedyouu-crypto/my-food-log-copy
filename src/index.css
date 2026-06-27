@@ -12,6 +12,16 @@ html, body, #root {
   height: 100%;
   margin: 0;
   padding: 0;
+  /*
+    Hard cap on horizontal overflow at the viewport boundary.
+    Even if some descendant slips past every min-w-0 / overflow-hidden
+    guard in the layout (e.g. a third-party widget, a very long food
+    name with no break opportunities, or a CSS regression), the page
+    itself can never grow wider than the viewport — so the user never
+    sees the dreaded "UI exploding sideways" effect.
+  */
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
 body {
@@ -166,6 +176,18 @@ input:focus, textarea:focus, select:focus { outline: none; }
    on mobile and prevents the 300ms ghost-tap on iOS. */
 button, a, [role="button"], input, textarea, select {
   touch-action: manipulation;
+}
+
+/* ─── Scroll-margin on form fields ──────────────────────────────────────────
+ * When `scrollIntoView({ block: "center" })` runs on a focused input (see
+ * useKeyboardScroll hook), the browser positions the element relative to
+ * the viewport but ignores any sticky/fixed UI above or below it. A small
+ * `scroll-margin-block` gives the input breathing room so it doesn't land
+ * directly under the top app-bar on mobile or directly above the keyboard.
+ */
+input, textarea, select, [contenteditable="true"] {
+  scroll-margin-top:    5rem;  /* clears the mobile header (~57px) + extra */
+  scroll-margin-bottom: 2rem;  /* clears the bottom nav comfortably */
 }
 
 /* Respect iOS safe-area insets for full-bleed fixed bars. */

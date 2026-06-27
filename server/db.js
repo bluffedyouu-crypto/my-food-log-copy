@@ -5,7 +5,7 @@ let mongoClient = null;
 let mongoDb = null;
 
 async function connectDB() {
-  const uri = process.env.MONGODB_URI || "mongodb://localhost:27017/macrotracker";
+  const uri = process.env.MONGODB_URI || "mongodb://localhost:27017/shredd";
 
   // Mongoose connection (for models)
   await mongoose.connect(uri, {

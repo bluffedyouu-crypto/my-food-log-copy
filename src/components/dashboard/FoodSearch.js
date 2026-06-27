@@ -110,7 +110,14 @@ export default function FoodSearch({ selectedMeal, onClose, onLogged, activeDate
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <>
-      <div className="glass rounded-2xl p-4">
+      {/*
+        `min-w-0 max-w-full overflow-hidden` on the FoodSearch outer card
+        prevents any oversized result row from leaking horizontally up to
+        the dashboard. Each individual scroll child below (the meal-pill
+        row, the results list) still scrolls or truncates internally — but
+        the card itself never gets wider than its grid/flex slot.
+      */}
+      <div className="glass rounded-2xl p-4 min-w-0 max-w-full overflow-hidden">
 
         {/* Meal selector pills — limited to the meals in the user's schedule */}
         <div
@@ -181,7 +188,7 @@ export default function FoodSearch({ selectedMeal, onClose, onLogged, activeDate
             <motion.div
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mt-3 space-y-1 max-h-64 overflow-y-auto"
+              className="mt-3 space-y-1 max-h-64 overflow-y-auto w-full min-w-0 max-w-full"
             >
               {results.map((food, i) => {
                 // per100g is the normalised flat object from normaliseFoodDoc()
@@ -194,9 +201,9 @@ export default function FoodSearch({ selectedMeal, onClose, onLogged, activeDate
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.025 }}
                     onClick={() => handleSelectFood(food)}
-                    className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-all text-left group"
+                    className="w-full max-w-full min-w-0 flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-all text-left group"
                   >
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 overflow-hidden">
                       <p className="text-sm font-medium text-white truncate">{food.name}</p>
                     </div>
 
@@ -209,8 +216,16 @@ export default function FoodSearch({ selectedMeal, onClose, onLogged, activeDate
                         <p className="text-xs text-slate-500">kcal/100g</p>
                       </div>
 
-                      {/* Macro detail — visible on hover */}
-                      <div className="hidden group-hover:flex items-center gap-1 text-xs">
+                      {/*
+                        Macro detail — visible on hover (pointer devices only).
+                        The `[@media(hover:hover)]:` arbitrary variant gates
+                        the reveal behind real pointer support, preventing
+                        iOS Safari from latching :hover state on tap and
+                        showing this row briefly before navigating — which
+                        previously caused the layout jump that felt like
+                        the UI "exploding".
+                      */}
+                      <div className="hidden [@media(hover:hover)]:group-hover:flex items-center gap-1 text-xs">
                         <span className="text-cyan-400">
                           P:{Math.round(p.protein || 0)}g
                         </span>

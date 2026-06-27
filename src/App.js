@@ -13,6 +13,7 @@ import BowlBuilder from "./components/bowl/BowlBuilder";
 import AnalyticsPage from "./components/analytics/AnalyticsPage";
 import SettingsPage from "./components/settings/SettingsPage";
 import Icon from "./components/ui/Icon";
+import useKeyboardScroll from "./hooks/useKeyboardScroll";
 
 // ─── Route Guards ─────────────────────────────────────────────────────────────
 function RequireAuth({ children }) {
@@ -106,6 +107,11 @@ function AppRoutes() {
 }
 
 export default function App() {
+  // Mobile-only: keep a focused input visible above the soft keyboard.
+  // Hooked in at the App root so it's active across login, register,
+  // onboarding, and every post-auth page (food search, settings, etc.).
+  useKeyboardScroll();
+
   return (
     <BrowserRouter>
       <AuthProvider>

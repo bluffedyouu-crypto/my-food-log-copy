@@ -1,7 +1,7 @@
 {
-  "name": "macro-tracker-server",
+  "name": "shredd-server",
   "version": "1.0.0",
-  "description": "Hono + Better Auth backend for the Diet & Macro Tracker",
+  "description": "Hono + Better Auth backend for Shredd — Diet & Macro Tracker",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",

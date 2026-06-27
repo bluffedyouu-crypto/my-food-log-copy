@@ -64,7 +64,7 @@ function DesktopSidebar({ appUser, onSignOut }) {
             <Icon name="salad" size={18} />
           </div>
           <div>
-            <h1 className="text-white font-bold text-base leading-tight">MacroSpace</h1>
+            <h1 className="text-white font-bold text-base leading-tight">Shredd</h1>
             <p className="text-slate-500 text-xs">Diet Tracker</p>
           </div>
         </div>
@@ -127,7 +127,7 @@ function MobileHeader({ appUser, onSignOut }) {
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white">
             <Icon name="salad" size={16} />
           </div>
-          <span className="text-white font-bold text-base">MacroSpace</span>
+          <span className="text-white font-bold text-base">Shredd</span>
         </div>
         <button
           onClick={() => setMenuOpen((v) => !v)}

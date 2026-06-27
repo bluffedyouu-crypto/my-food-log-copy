@@ -1,4 +1,4 @@
-# 🥗 MacroSpace — Diet & Macro Tracker
+# 🔥 Shredd — Diet & Macro Tracker
 
 A modern, highly interactive diet and macro tracking web application with a "Deep Space" dark UI, animated onboarding, drag-and-drop meal builder, and real-time progress visualization.
 
@@ -39,7 +39,7 @@ cp server/.env.example server/.env
 
 Edit `server/.env`:
 ```env
-MONGODB_URI=mongodb://localhost:27017/macrotracker
+MONGODB_URI=mongodb://localhost:27017/shredd
 BETTER_AUTH_SECRET=your-long-random-secret
 BETTER_AUTH_URL=http://localhost:5000
 GOOGLE_CLIENT_ID=your-google-client-id       # optional
@@ -102,7 +102,7 @@ Automatically calculates daily calorie target and macro splits using the **Miffl
 ## Project Structure
 
 ```
-my-food-log/
+shredd/
 ├── src/                  # React frontend
 │   ├── api/              # Axios API client
 │   ├── components/       # UI components by feature

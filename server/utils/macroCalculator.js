@@ -1,5 +1,5 @@
 /**
- * Macro Calculator — MacroSpace
+ * Macro Calculator — Shredd
  * ────────────────────────────────────────────────────────────────────────────
  *  1. BMR        : Mifflin-St Jeor (1990) — the most accurate predictive
  *                  equation for non-athletes per ADA & ESPEN reviews.

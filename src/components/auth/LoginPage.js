@@ -51,7 +51,7 @@ export default function LoginPage() {
             <Icon name="salad" size={26} />
           </div>
           <h1 className="text-2xl font-bold text-white">Welcome back</h1>
-          <p className="text-slate-400 mt-1">Sign in to your MacroSpace account</p>
+          <p className="text-slate-400 mt-1">Sign in to your Shredd account</p>
         </div>
 
         {/* Card */}

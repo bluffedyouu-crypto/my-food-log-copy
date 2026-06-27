@@ -1,9 +1,9 @@
-# Design Document — MacroSpace Diet & Macro Tracker
+# Design Document — Shredd Diet & Macro Tracker
 
 ## Architecture Overview
 
 ```
-my-food-log/
+shredd/
 ├── src/                          # React frontend (CRA)
 │   ├── api/
 │   │   └── client.js             # Axios client + all API modules
