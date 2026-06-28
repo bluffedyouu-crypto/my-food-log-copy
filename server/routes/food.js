@@ -1,5 +1,6 @@
 const { Hono } = require("hono");
 const Food = require("../models/Food");
+const CustomBowl = require("../models/CustomBowl");
 const { requireAuth } = require("../middleware/requireAuth");
 
 const router = new Hono();
@@ -303,9 +304,83 @@ router.get("/search", requireAuth, async (c) => {
       },
     ]);
 
-    const foods = docs.map(normaliseFoodDoc);
+    const foods = docs.map(normaliseFoodDoc).map((f) => ({ ...f, type: "food" }));
 
-    return c.json({ foods, total: foods.length, source: "local_db" });
+    // ── Also search the user's saved custom bowls ──────────────────────────
+    // Bowls share the search query and get returned alongside foods so the
+    // user only needs ONE search box to log either a stock food OR one of
+    // their saved bowls. We use the same word-tokenised regex pattern that
+    // already drove the foods query, applied to `name` instead of
+    // `dish_name`. Each bowl is normalised into a `food-shaped` payload
+    // (calories/protein/carbs/fats per 100g of bowl) with `type: "bowl"`
+    // so the frontend can render it distinctly and special-case logging.
+    const authUser = c.get("authUser");
+    const bowlWordFilters = words.map((w) => ({
+      name: { $regex: escapeRegex(w), $options: "i" },
+    }));
+
+    const rawBowls = await CustomBowl.find({
+      userId: authUser.id,
+      $and: bowlWordFilters,
+    })
+      .sort({ updatedAt: -1 })
+      .limit(20)
+      .lean();
+
+    const bowls = rawBowls.map((b) => {
+      const totalGrams = (b.ingredients || []).reduce(
+        (sum, ing) => sum + (ing.quantityInGrams || 0),
+        0
+      );
+      const t = b.totals || {};
+      // Avoid divide-by-zero on bowls with all-zero gram ingredients.
+      const per100g = totalGrams > 0
+        ? {
+            calories: +((t.calories || 0) / totalGrams * 100).toFixed(2),
+            protein:  +((t.protein  || 0) / totalGrams * 100).toFixed(2),
+            carbs:    +((t.carbs    || 0) / totalGrams * 100).toFixed(2),
+            fats:     +((t.fats     || 0) / totalGrams * 100).toFixed(2),
+            fiber:    +((t.fiber    || 0) / totalGrams * 100).toFixed(2),
+            sodium:   0,
+          }
+        : { calories: 0, protein: 0, carbs: 0, fats: 0, fiber: 0, sodium: 0 };
+
+      return {
+        type: "bowl",
+        _id:  b._id,
+        id:   b._id,
+        name: b.name,
+        brand: null,
+        emoji: b.emoji || "🥣",
+        per100g,
+        // Logging "1 bowl" means logging totalGrams worth — express that as a
+        // virtual unit so the QuantityModal can offer a "bowl" choice
+        // alongside grams without any custom math.
+        servingSize:        totalGrams,
+        servingUnit:        "g",
+        servingDescription: `1 bowl (${Math.round(totalGrams)}g)`,
+        quantities:         totalGrams > 0 ? { bowl: 100 / totalGrams } : null,
+
+        // Preserve the bowl's ingredient list so the frontend can fan
+        // out to per-ingredient log entries when the user confirms
+        // logging a bowl (matches the existing CustomBowlsPanel flow).
+        bowl: {
+          _id:         b._id,
+          name:        b.name,
+          emoji:       b.emoji,
+          ingredients: b.ingredients,
+          totals:      b.totals,
+          totalGrams,
+        },
+      };
+    });
+
+    return c.json({
+      foods,
+      bowls,
+      total: foods.length + bowls.length,
+      source: "local_db",
+    });
   } catch (err) {
     console.error("GET /api/food/search error:", err);
     return c.json({ error: "Food search failed", details: err.message }, 500);

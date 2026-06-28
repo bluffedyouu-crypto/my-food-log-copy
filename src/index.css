@@ -214,3 +214,77 @@ input, textarea, select, [contenteditable="true"] {
 /* Respect iOS safe-area insets for full-bleed fixed bars. */
 .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .pt-safe { padding-top:    env(safe-area-inset-top,    0px); }
+
+/* ─── Glow Utilities ──────────────────────────────────────────────────────────
+ * Reusable neon/glow effects used across the bowl builder, custom-bowl badges
+ * in food search, and any future place where we want a "this is special"
+ * visual treatment. Keep all glows here so radius/spread values stay
+ * consistent across the app instead of being re-invented inline. */
+
+/* Indigo glow (default app accent). Use on hover or active states. */
+.glow-indigo {
+  box-shadow: 0 0 24px rgba(99, 102, 241, 0.45),
+              0 0 48px rgba(99, 102, 241, 0.20);
+}
+.glow-indigo-soft {
+  box-shadow: 0 0 16px rgba(99, 102, 241, 0.25);
+}
+
+/* Purple glow — used for "saved bowls" group header / bowl badges. */
+.glow-purple {
+  box-shadow: 0 0 24px rgba(168, 85, 247, 0.45),
+              0 0 48px rgba(168, 85, 247, 0.20);
+}
+.glow-purple-soft {
+  box-shadow: 0 0 14px rgba(168, 85, 247, 0.30);
+}
+
+/* Emerald glow — used for "log/save success" affordances. */
+.glow-emerald {
+  box-shadow: 0 0 24px rgba(16, 185, 129, 0.45),
+              0 0 48px rgba(16, 185, 129, 0.20);
+}
+
+/* Continuous pulse — for the bowl visualisation and the save CTA. The
+ * animation breathes the glow in and out so it draws the eye without
+ * being noisy. `prefers-reduced-motion` falls back to a steady glow. */
+@keyframes glow-pulse-indigo {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.35),
+                0 0 40px rgba(99, 102, 241, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 36px rgba(99, 102, 241, 0.60),
+                0 0 72px rgba(99, 102, 241, 0.30);
+  }
+}
+@keyframes glow-pulse-purple {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(168, 85, 247, 0.35),
+                0 0 40px rgba(168, 85, 247, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 36px rgba(168, 85, 247, 0.60),
+                0 0 72px rgba(168, 85, 247, 0.30);
+  }
+}
+
+.glow-pulse {
+  animation: glow-pulse-indigo 3.4s ease-in-out infinite;
+}
+.glow-pulse-purple {
+  animation: glow-pulse-purple 3.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glow-pulse,
+  .glow-pulse-purple {
+    animation: none;
+    box-shadow: 0 0 28px rgba(99, 102, 241, 0.45);
+  }
+}
+
+/* Text glow — small inline accent for ingredient labels floating inside
+ * the bowl. Use very sparingly; multi-line text glow gets eye-tiring. */
+.text-glow-indigo { text-shadow: 0 0 12px rgba(99, 102, 241, 0.7); }
+.text-glow-purple { text-shadow: 0 0 12px rgba(168, 85, 247, 0.7); }
