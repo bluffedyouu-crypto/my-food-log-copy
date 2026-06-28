@@ -38,7 +38,7 @@ export default function AppLayout() {
             animate="animate"
             exit="exit"
             transition={{ duration: 0.3, ease: "easeOut" }}
-            className="min-h-screen p-4 md:p-6 pt-20 md:pt-6 pb-24 md:pb-6 min-w-0"
+            className="min-h-screen p-4 md:p-6 pt-20 md:pt-6 pb-24 md:pb-6 min-w-0 safe-top"
           >
             <Outlet />
           </motion.div>

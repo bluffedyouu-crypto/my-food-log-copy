@@ -122,7 +122,10 @@ function MobileHeader({ appUser, onSignOut }) {
 
   return (
     <>
-      <div className="md:hidden fixed top-0 left-0 right-0 z-40 glass-strong border-b border-white/5 px-4 py-3 flex items-center justify-between">
+      <div
+        className="md:hidden fixed top-0 left-0 right-0 z-40 glass-strong border-b border-white/5 px-4 py-3 flex items-center justify-between"
+        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.75rem)" }}
+      >
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white">
             <Icon name="salad" size={16} />
@@ -153,7 +156,8 @@ function MobileHeader({ appUser, onSignOut }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="md:hidden fixed top-[57px] left-0 right-0 z-30 glass-strong border-b border-white/5 px-4 py-4"
+            className="md:hidden fixed left-0 right-0 z-30 glass-strong border-b border-white/5 px-4 py-4"
+            style={{ top: "calc(57px + env(safe-area-inset-top, 0px))" }}
           >
             <div className="flex items-center gap-3 mb-4 pb-3 border-b border-white/5">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-base font-bold text-white">

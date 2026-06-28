@@ -32,6 +32,27 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ─── iOS Safe Area ──────────────────────────────────────────────────────────── */
+/* When saved to homescreen with `viewport-fit=cover` and
+   `apple-mobile-web-app-status-bar-style: black-translucent`, iOS extends
+   the web view behind the status bar and notch. We need to inset content
+   using the env() safe-area values so nothing sits under the clock/signal. */
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+}
+
+/* On mobile (<768px), bump the main content's top padding by the notch height
+   so it clears the fixed header that already accounts for the safe area.
+   On desktop (≥768px) the sidebar layout doesn't need this. */
+@media (max-width: 767px) {
+  .safe-top {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 5rem) !important;
+  }
+}
+
 /* ─── Scrollbar ──────────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
