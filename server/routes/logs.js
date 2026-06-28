@@ -20,7 +20,7 @@ router.get("/today", requireAuth, async (c) => {
 
     if (!log) {
       // Get user targets for snapshot
-      const user = await User.findOne({ authUserId: authUser.id }).lean();
+      const user = await User.findById(authUser.id).lean();
       const targets = user?.dailyTargets
         ? {
             calories: user.dailyTargets.calories,
@@ -101,7 +101,7 @@ router.post("/entry", requireAuth, async (c) => {
   const nutrition = nutritionForGrams(per100g, quantityInGrams);
 
   try {
-    const user = await User.findOne({ authUserId: authUser.id }).lean();
+    const user = await User.findById(authUser.id).lean();
     const targets = user?.dailyTargets
       ? { calories: user.dailyTargets.calories, protein: user.dailyTargets.protein, carbs: user.dailyTargets.carbs, fats: user.dailyTargets.fats }
       : null;
@@ -178,7 +178,7 @@ router.get("/analytics/summary", requireAuth, async (c) => {
       dateString: { $gte: fromDate },
     }).sort({ dateString: 1 }).lean();
 
-    const user = await User.findOne({ authUserId: authUser.id }).lean();
+    const user = await User.findById(authUser.id).lean();
     const targets = user?.dailyTargets;
 
     const summary = logs.map((log) => ({

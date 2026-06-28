@@ -1,24 +1,59 @@
 const { Hono } = require("hono");
 const User = require("../models/User");
+const WeightLog = require("../models/WeightLog");
 const { calculateDailyTargets } = require("../utils/macroCalculator");
 const { requireAuth } = require("../middleware/requireAuth");
 
 const router = new Hono();
 
-// GET /api/users/me — get current user profile
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/**
+ * Format a Date as a local-time YYYY-MM-DD string.
+ *
+ * We deliberately avoid `Date.prototype.toISOString().split("T")[0]` here
+ * because that produces a UTC date — for users east of UTC (e.g. IST) a
+ * weight logged at 1 AM local time would be filed under the *previous*
+ * UTC calendar day. The frontend dashboard already had this bug fixed in
+ * `src/utils/dateLocal.js`; the same reasoning applies on the server.
+ *
+ * The route accepts an optional `date` body field to override the
+ * computation (used when the user logs a weight for a past date), and
+ * passes that through here when present.
+ */
+function toLocalDateString(d) {
+  const dt = d instanceof Date ? d : new Date(d);
+  const y  = dt.getFullYear();
+  const m  = String(dt.getMonth() + 1).padStart(2, "0");
+  const day = String(dt.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+// ─── Routes ──────────────────────────────────────────────────────────────────
+
+// GET /api/users/me — return the current user (unified document)
+//
+// Before the schema refactor we did `User.findOne({ authUserId })` to bridge
+// the auth/user split, and lazy-created the row on first access. Now Better
+// Auth and the app write to the same `users` row, so this becomes a plain
+// `findById`. We also no longer need to upsert here — Better Auth's user
+// adapter creates the row on sign-up.
 router.get("/me", requireAuth, async (c) => {
   const authUser = c.get("authUser");
   try {
-    let user = await User.findOne({ authUserId: authUser.id });
+    // `authUser.id` is the string form of the user `_id` (Better Auth
+    // serialises ObjectId → string on read). Mongoose's `findById` accepts
+    // either a string or an ObjectId, so no casting needed.
+    const user = await User.findById(authUser.id);
+
     if (!user) {
-      // Auto-create app user on first access
-      user = await User.create({
-        authUserId: authUser.id,
-        email: authUser.email,
-        name: authUser.name,
-        avatar: authUser.image,
-      });
+      // This should be unreachable in practice — if `requireAuth` accepted
+      // the request then Better Auth resolved a session pointing at a
+      // user row. Returning 404 here surfaces the desync clearly rather
+      // than auto-creating a half-formed row that hides the bug.
+      return c.json({ error: "User record not found" }, 404);
     }
+
     return c.json({ user });
   } catch (err) {
     console.error("GET /me error:", err);
@@ -33,21 +68,22 @@ router.post("/onboarding", requireAuth, async (c) => {
 
   const {
     goal, age, currentWeight, targetWeight, height, gender,
-    activityLevel, mealFrequency, weightUnit, heightUnit, weeksToGoal
+    activityLevel, mealFrequency, weightUnit, heightUnit, weeksToGoal,
   } = body;
 
-  // Validate required fields
   if (!goal || !age || !currentWeight || !height || !gender || !activityLevel) {
     return c.json({ error: "Missing required onboarding fields" }, 400);
   }
 
   try {
     const profile = {
-      goal, age: +age,
+      goal,
+      age: +age,
       currentWeight: +currentWeight,
       targetWeight: targetWeight ? +targetWeight : +currentWeight,
       height: +height,
-      gender, activityLevel,
+      gender,
+      activityLevel,
       mealFrequency: mealFrequency ? +mealFrequency : 3,
       weightUnit: weightUnit || "kg",
       heightUnit: heightUnit || "cm",
@@ -56,21 +92,44 @@ router.post("/onboarding", requireAuth, async (c) => {
 
     const dailyTargets = calculateDailyTargets(profile);
 
-    const user = await User.findOneAndUpdate(
-      { authUserId: authUser.id },
+    // Patch the existing user row in place. We don't upsert: the row is
+    // guaranteed to exist (Better Auth creates it on sign-up). Using
+    // findByIdAndUpdate keeps the operation a single round-trip.
+    const user = await User.findByIdAndUpdate(
+      authUser.id,
       {
-        profile,
-        dailyTargets,
-        onboardingComplete: true,
-        $push: {
-          weightHistory: {
-            date: new Date(),
-            weight: profile.currentWeight,
-            unit: profile.weightUnit,
-          },
+        $set: {
+          profile,
+          dailyTargets,
+          onboardingComplete: true,
         },
       },
-      { returnDocument: "after", upsert: true }
+      { new: true, runValidators: false }
+    );
+
+    if (!user) return c.json({ error: "User not found" }, 404);
+
+    // Also seed the first weight entry into the dedicated weightLogs
+    // collection. Mirrors the original behaviour where onboarding pushed
+    // an entry onto the user's nested `weightHistory` array.
+    //
+    // We use upsert-by-(userId, dateString) so re-running onboarding
+    // (e.g. via the Settings reset flow) doesn't violate the unique
+    // index when the user already has a weight entry for today.
+    const today = new Date();
+    const dateStr = toLocalDateString(today);
+    await WeightLog.findOneAndUpdate(
+      { userId: authUser.id, dateString: dateStr },
+      {
+        $setOnInsert: {
+          userId:     authUser.id,
+          date:       today,
+          dateString: dateStr,
+          weight:     profile.currentWeight,
+          unit:       profile.weightUnit,
+        },
+      },
+      { upsert: true, new: false, setDefaultsOnInsert: true }
     );
 
     return c.json({ user, dailyTargets });
@@ -107,19 +166,17 @@ router.patch("/settings", requireAuth, async (c) => {
     // ── Manual target override ──────────────────────────────────────────────
     if (body.manualTargets) {
       const mt = body.manualTargets;
-      if (mt.calories !== undefined) setFields["dailyTargets.calories"]         = +mt.calories;
-      if (mt.protein  !== undefined) setFields["dailyTargets.protein"]          = +mt.protein;
-      if (mt.carbs    !== undefined) setFields["dailyTargets.carbs"]            = +mt.carbs;
-      if (mt.fats     !== undefined) setFields["dailyTargets.fats"]             = +mt.fats;
+      if (mt.calories !== undefined) setFields["dailyTargets.calories"] = +mt.calories;
+      if (mt.protein  !== undefined) setFields["dailyTargets.protein"]  = +mt.protein;
+      if (mt.carbs    !== undefined) setFields["dailyTargets.carbs"]    = +mt.carbs;
+      if (mt.fats     !== undefined) setFields["dailyTargets.fats"]     = +mt.fats;
       setFields["dailyTargets.isManualOverride"] = true;
     }
 
     // ── Recalculate from updated profile ────────────────────────────────────
-    // We need the current profile to recalculate, so fetch it first (lean).
     if (body.recalculate) {
-      const current = await User.findOne({ authUserId: authUser.id }).lean();
+      const current = await User.findById(authUser.id).lean();
       if (current) {
-        // Merge any incoming profile changes on top of the stored profile
         const mergedProfile = { ...current.profile };
         for (const field of profileFields) {
           if (body[field] !== undefined) mergedProfile[field] = body[field];
@@ -133,26 +190,35 @@ router.patch("/settings", requireAuth, async (c) => {
       }
     }
 
-    // ── Weight history entry (if weight changed) ────────────────────────────
-    // Use $push separately via update operators — handled below.
-    const updateOp = { $set: setFields };
-    if (body.currentWeight) {
-      updateOp.$push = {
-        weightHistory: {
-          date:   new Date(),
-          weight: +body.currentWeight,
-          unit:   body.weightUnit || "kg",
-        },
-      };
-    }
-
-    const user = await User.findOneAndUpdate(
-      { authUserId: authUser.id },
-      updateOp,
-      { returnDocument: "after", runValidators: false }
+    const user = await User.findByIdAndUpdate(
+      authUser.id,
+      { $set: setFields },
+      { new: true, runValidators: false }
     );
 
     if (!user) return c.json({ error: "User not found" }, 404);
+
+    // ── Weight log entry (if weight changed) ────────────────────────────────
+    // Updating currentWeight is a "log a weight today" action by intent —
+    // write a WeightLog row so the trend chart picks it up. Idempotent on
+    // calendar day to match the original `weightHistory` semantics.
+    if (body.currentWeight !== undefined) {
+      const today = new Date();
+      const dateStr = toLocalDateString(today);
+      await WeightLog.findOneAndUpdate(
+        { userId: authUser.id, dateString: dateStr },
+        {
+          $setOnInsert: {
+            userId:     authUser.id,
+            date:       today,
+            dateString: dateStr,
+            weight:     +body.currentWeight,
+            unit:       body.weightUnit || "kg",
+          },
+        },
+        { upsert: true, new: false, setDefaultsOnInsert: true }
+      );
+    }
 
     return c.json({ user });
   } catch (err) {
@@ -168,43 +234,40 @@ router.post("/weight", requireAuth, async (c) => {
 
   if (!weight) return c.json({ error: "Weight is required" }, 400);
 
-  // Normalise the date to YYYY-MM-DD
+  // Resolve the entry's calendar day. `date` is expected to be a
+  // YYYY-MM-DD string; we anchor it at noon local time when building the
+  // Date so daylight-saving transitions can't shift the calendar day.
   const dateStr = date
-    ? new Date(date + "T12:00:00").toISOString().split("T")[0]
-    : new Date().toISOString().split("T")[0];
+    ? toLocalDateString(new Date(date + "T12:00:00"))
+    : toLocalDateString(new Date());
+  const dateObj = new Date(dateStr + "T12:00:00");
 
   try {
-    const user = await User.findOne({ authUserId: authUser.id }).lean();
-    if (!user) return c.json({ error: "User not found" }, 404);
+    // Try to insert. The (userId, dateString) unique index guarantees one
+    // entry per calendar day — if a row already exists, mongoose raises a
+    // duplicate-key error (code 11000), which we translate into a 409 to
+    // match the previous API contract.
+    const entry = await WeightLog.create({
+      userId:     authUser.id,
+      date:       dateObj,
+      dateString: dateStr,
+      weight:     +weight,
+      unit:       unit || "kg",
+    });
 
-    // Enforce one weight entry per calendar day
-    const alreadyLogged = (user.weightHistory || []).some(
-      (e) => new Date(e.date).toISOString().split("T")[0] === dateStr
+    // Keep `profile.currentWeight` in sync so the dashboard, weight card,
+    // and target recalculation always reflect the latest log.
+    await User.findByIdAndUpdate(
+      authUser.id,
+      { $set: { "profile.currentWeight": +weight } },
+      { runValidators: false }
     );
-    if (alreadyLogged) {
+
+    return c.json({ entry });
+  } catch (err) {
+    if (err && err.code === 11000) {
       return c.json({ error: "Weight already logged for this date" }, 409);
     }
-
-    // Use findOneAndUpdate with $push so Mongoose only validates the pushed
-    // subdocument — not the entire document (avoids required-field errors on
-    // unrelated fields like dailyTargets).
-    const updated = await User.findOneAndUpdate(
-      { authUserId: authUser.id },
-      {
-        $push: {
-          weightHistory: {
-            date: new Date(dateStr + "T12:00:00"),
-            weight: +weight,
-            unit: unit || "kg",
-          },
-        },
-        $set: { "profile.currentWeight": +weight },
-      },
-      { returnDocument: "after", runValidators: false }
-    );
-
-    return c.json({ weightHistory: updated.weightHistory });
-  } catch (err) {
     console.error("POST /weight error:", err);
     return c.json({ error: "Failed to log weight", details: err.message }, 500);
   }
@@ -213,38 +276,59 @@ router.post("/weight", requireAuth, async (c) => {
 // GET /api/users/weight?date=YYYY-MM-DD — get weight entry for a specific date
 router.get("/weight", requireAuth, async (c) => {
   const authUser = c.get("authUser");
-  const dateStr  = c.req.query("date") || new Date().toISOString().split("T")[0];
+  const dateStr = c.req.query("date") || toLocalDateString(new Date());
 
   try {
-    const user = await User.findOne({ authUserId: authUser.id }).lean();
-    if (!user) return c.json({ entry: null });
-
-    const entry = (user.weightHistory || []).find(
-      (e) => new Date(e.date).toISOString().split("T")[0] === dateStr
-    ) || null;
+    const entry = await WeightLog.findOne({
+      userId: authUser.id,
+      dateString: dateStr,
+    }).lean();
 
     return c.json({ entry });
   } catch (err) {
+    console.error("GET /weight error:", err);
     return c.json({ error: "Failed to fetch weight entry" }, 500);
+  }
+});
+
+// GET /api/users/weight/history — full weight history for the user, oldest → newest
+//
+// New endpoint exposing the dedicated weightLogs collection in one shot.
+// AnalyticsPage previously walked the nested `user.weightHistory` array;
+// now it can hit this endpoint directly without inflating the user payload.
+router.get("/weight/history", requireAuth, async (c) => {
+  const authUser = c.get("authUser");
+  const limit = Math.min(parseInt(c.req.query("limit") || "365"), 1000);
+
+  try {
+    const entries = await WeightLog.find({ userId: authUser.id })
+      .sort({ date: 1 })
+      .limit(limit)
+      .lean();
+
+    return c.json({ entries });
+  } catch (err) {
+    console.error("GET /weight/history error:", err);
+    return c.json({ error: "Failed to fetch weight history" }, 500);
   }
 });
 
 // DELETE /api/users/weight/:entryId — remove a specific weight entry
 router.delete("/weight/:entryId", requireAuth, async (c) => {
-  const authUser    = c.get("authUser");
+  const authUser = c.get("authUser");
   const { entryId } = c.req.param();
 
   try {
-    // Use $pull to remove the subdocument by _id — no full-document save needed
-    const updated = await User.findOneAndUpdate(
-      { authUserId: authUser.id },
-      { $pull: { weightHistory: { _id: entryId } } },
-      { returnDocument: "after", runValidators: false }
-    );
+    // Guard the delete by both `_id` and `userId` so a malicious client
+    // can't delete another user's row by guessing IDs.
+    const deleted = await WeightLog.findOneAndDelete({
+      _id: entryId,
+      userId: authUser.id,
+    });
 
-    if (!updated) return c.json({ error: "User not found" }, 404);
+    if (!deleted) return c.json({ error: "Entry not found" }, 404);
 
-    return c.json({ weightHistory: updated.weightHistory });
+    return c.json({ success: true });
   } catch (err) {
     console.error("DELETE /weight error:", err);
     return c.json({ error: "Failed to delete weight entry", details: err.message }, 500);

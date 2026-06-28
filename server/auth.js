@@ -1,7 +1,6 @@
 const { betterAuth } = require("better-auth");
 const { mongodbAdapter } = require("better-auth/adapters/mongodb");
 const { bearer } = require("better-auth/plugins");
-const User = require("./models/User");
 
 let authInstance = null;
 
@@ -86,6 +85,80 @@ function createAuth(mongoDb) {
     session: {
       expiresIn: 60 * 60 * 24 * 7, // 7 days
       updateAge: 60 * 60 * 24,      // refresh if older than 1 day
+
+      // Better Auth stores sessions in the `session` collection by default.
+      // We rename to `sessions` for naming consistency with the rest of the
+      // schema (every collection is the plural noun for what it stores).
+      modelName: "sessions",
+    },
+
+    // ── Single source of truth for users ───────────────────────────────────
+    //
+    // Better Auth previously wrote to a `user` collection while our app's
+    // Mongoose `User` model wrote a parallel `users` collection — every
+    // sign-in produced two rows for the same person, joined manually via
+    // `authUserId`. That split caused subtle bugs (data drift, race
+    // conditions during onboarding) and made queries needlessly complex.
+    //
+    // Now Better Auth and the app share a single `users` collection. The
+    // identity fields (name/email/emailVerified/image/createdAt/updatedAt)
+    // are still owned by Better Auth via its adapter; the app-specific
+    // fields (profile / dailyTargets / onboardingComplete) are declared as
+    // `additionalFields` so Better Auth knows about them and includes them
+    // in `getSession()` responses, while the actual writes happen through
+    // the Mongoose `User` model in our routes.
+    user: {
+      modelName: "users",
+
+      additionalFields: {
+        // `onboardingComplete` gates whether the user is sent to /onboarding
+        // or /dashboard after sign-in. Declared with `defaultValue: false`
+        // so Better Auth ensures every new sign-up (email *and* OAuth) gets
+        // a sensible starting value, and `input: false` so untrusted client
+        // input can never flip it via the sign-up endpoint.
+        onboardingComplete: {
+          type:         "boolean",
+          required:     false,
+          defaultValue: false,
+          input:        false,
+        },
+
+        // Profile + dailyTargets are nested objects, which Better Auth's
+        // primitive type system doesn't natively support. Declaring them
+        // with `type: "string"` (the most permissive primitive) gets them
+        // round-tripped through `getSession()` without filterOutputFields
+        // stripping them. In practice they're managed entirely by our own
+        // /onboarding and /settings routes via Mongoose, never by Better
+        // Auth — these declarations exist solely to surface the fields to
+        // the client when it fetches the session.
+        profile: {
+          type:     "string",
+          required: false,
+          input:    false,
+        },
+        dailyTargets: {
+          type:     "string",
+          required: false,
+          input:    false,
+        },
+      },
+    },
+
+    // Better Auth's OAuth provider links live in `account` by default. We
+    // rename to `accounts` for consistency. This is where Google's refresh
+    // token / access token / providerId etc. are stored — completely
+    // separate from `users` because the data is auth-internal and a single
+    // user can have many provider links (Google + email/password).
+    account: {
+      modelName: "accounts",
+    },
+
+    // Verification tokens (email-verification, password-reset, OAuth state)
+    // live in the `verification` collection by default. Renamed for the
+    // same naming-consistency reason. These rows are short-lived and get
+    // garbage-collected on use or expiry.
+    verification: {
+      modelName: "verifications",
     },
 
     trustedOrigins: [
@@ -107,52 +180,21 @@ function createAuth(mongoDb) {
       defaultCookieAttributes: cookieAttributes,
     },
 
-    // ── databaseHooks: provision the app-level User document ────────────────
-    // Better Auth manages its own `user` collection (credentials, sessions,
-    // accounts). Our app has a separate `User` model that holds the macro
-    // profile, daily targets, weight history, etc. We need a row in there
-    // for every Better Auth user — regardless of whether they signed up by
-    // email/password or Google OAuth.
+    // ── databaseHooks ───────────────────────────────────────────────────────
     //
-    // GET /api/users/me already lazy-creates the row on first access, which
-    // covers the typical "user just logged in and the SPA fetches their
-    // profile" flow. But hooking the create event here is belt-and-braces:
-    //   • It guarantees the row exists the instant Better Auth registers
-    //     the user, so any later request that bypasses /me (e.g. an
-    //     analytics call) won't see a missing User.
-    //   • It makes the Google OAuth path explicitly match the email/password
-    //     path — same User document, same fields, same time.
-    //   • It captures the avatar/image Google provides on first sign-in.
-    databaseHooks: {
-      user: {
-        create: {
-          async after(authUser) {
-            try {
-              // Upsert so duplicate-key races (e.g. concurrent /me hit
-              // racing with this hook) don't throw. We only fill in fields
-              // that don't already exist — never clobber profile data.
-              await User.findOneAndUpdate(
-                { authUserId: authUser.id },
-                {
-                  $setOnInsert: {
-                    authUserId: authUser.id,
-                    email:      authUser.email,
-                    name:       authUser.name   || null,
-                    avatar:     authUser.image  || null,
-                    onboardingComplete: false,
-                  },
-                },
-                { upsert: true, new: false, runValidators: false }
-              );
-            } catch (err) {
-              // Don't block the sign-up flow if our side-table write fails —
-              // /me will retry the create on first access. Just log it.
-              console.error("[auth] Failed to provision app User document:", err?.message || err);
-            }
-          },
-        },
-      },
-    },
+    // Previously this hook upserted a SEPARATE Mongoose User document on
+    // every sign-up to bridge between Better Auth's `user` collection and
+    // our app's `users` collection. That whole bridge is gone now — the
+    // two collections are one. Better Auth's `additionalFields` declaration
+    // above is what guarantees a sensible `onboardingComplete: false` lands
+    // on every new user, including OAuth sign-ups.
+    //
+    // We intentionally leave the `databaseHooks` block empty rather than
+    // deleting it: it acts as a clearly-named extension point for any
+    // future need (e.g. seeding a default `dailyTargets`, sending a
+    // welcome email, recording sign-up analytics) without having to
+    // rediscover the API surface.
+    databaseHooks: {},
   });
 
   return authInstance;
