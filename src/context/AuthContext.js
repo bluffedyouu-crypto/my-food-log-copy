@@ -54,21 +54,23 @@ export function AuthProvider({ children }) {
   };
 
   const signOut = async () => {
-    // Best-effort server-side sign-out.
-    // The server call CAN fail for benign reasons:
-    //   • The session cookie was set with `sameSite: "none"; secure: true`
-    //     and the user is on plain http (e.g. localhost) → server returns 401.
-    //   • The session has already expired on the server side.
-    //   • The user is offline / temporarily lost their network connection.
-    // None of those should keep the user logged in on the client. We always
-    // clear local state so the route guards immediately redirect to /login.
+    // Belt-and-braces sign-out. `authApi.signOut` now performs a two-stage
+    // revocation: first hits `/api/auth/revoke-sessions` (bearer-aware — kills
+    // the DB session row), then `/api/auth/sign-out` (best-effort cookie
+    // expiry). Both errors are swallowed inside authApi.signOut itself, so
+    // the call below should never throw — but we keep the try/catch as a
+    // defensive net in case axios surfaces something unexpected.
+    //
+    // Local cleanup runs unconditionally afterwards so the route guards
+    // redirect to /login no matter what happened on the network.
     try {
       await authApi.signOut();
     } catch (err) {
-      // Surface in the console so we don't silently mask real bugs, but
-      // never block the local-side sign-out.
-      console.warn("[auth] Server sign-out failed, proceeding with local cleanup:", err?.message || err);
+      console.warn("[auth] sign-out request flow failed:", err?.message || err);
     }
+    // Remove the bearer token first — even if a stale session cookie is
+    // somehow still valid on the next refresh, getSession without the bearer
+    // header AND without a matching cookie will return null.
     localStorage.removeItem("better_auth_token");
     setSession(null);
     setAppUser(null);
