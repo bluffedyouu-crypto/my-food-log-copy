@@ -1,5 +1,5 @@
 import React from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 
@@ -55,11 +55,36 @@ function LoadingScreen() {
 }
 
 // ─── Auth Callback (Google OAuth redirect) ────────────────────────────────────
+// Better Auth's social-provider flow redirects the browser to whatever
+// callbackURL we passed to `POST /api/auth/sign-in/social`. We point that at
+// `/auth/callback`, this component re-fetches the session (cookie was set by
+// the server during the OAuth handshake) and then bounces the user to the
+// right place: onboarding if they're new, dashboard if returning. Without
+// the navigation effect the user would sit on a blank loading screen forever
+// because no route guard wraps this route.
 function AuthCallback() {
-  const { refetch } = useAuth();
+  const navigate = useNavigate();
+  const { refetch, loading, isAuthenticated, isOnboarded } = useAuth();
+  const refetchedRef = React.useRef(false);
+
   React.useEffect(() => {
-    refetch();
+    // Only refetch once — preventing a loop if loading flips repeatedly.
+    if (!refetchedRef.current) {
+      refetchedRef.current = true;
+      refetch();
+    }
   }, [refetch]);
+
+  React.useEffect(() => {
+    if (loading) return;
+    if (!isAuthenticated) {
+      // Cookie wasn't set (likely a server-side OAuth error) — punt to login.
+      navigate("/login", { replace: true });
+    } else {
+      navigate(isOnboarded ? "/dashboard" : "/onboarding", { replace: true });
+    }
+  }, [loading, isAuthenticated, isOnboarded, navigate]);
+
   return <LoadingScreen />;
 }
 

@@ -10,6 +10,7 @@ import MealCategory from "./MealCategory";
 import FitnessTracker from "./FitnessTracker";
 import Icon from "../ui/Icon";
 import { MEAL_LABELS, MEAL_SCHEDULES } from "../../constants/meals";
+import { localDateString, useLocalToday } from "../../utils/dateLocal";
 
 // ─── Micro config ─────────────────────────────────────────────────────────────
 const MICROS = [
@@ -42,7 +43,9 @@ function pct(consumed, target) {
 }
 
 function toDateString(d) {
-  return d.toISOString().split("T")[0];
+  // Use local-time formatting (not UTC) so the "today" pill matches the user's
+  // wallclock. See `src/utils/dateLocal.js` for the full rationale.
+  return localDateString(d);
 }
 
 function shiftDate(dateStr, days) {
@@ -60,8 +63,7 @@ function formatDateLabel(dateStr) {
 // Horizontally scrollable strip of the last N days ending at Today.
 // User can drag/scroll left to access older dates; the strip auto-scrolls
 // to Today on mount so the most-recent days are visible by default.
-function DateNavigator({ activeDate, onChange }) {
-  const todayStr = toDateString(new Date());
+function DateNavigator({ activeDate, todayStr, onChange }) {
   const isToday  = activeDate === todayStr;
 
   // Show ~60 past days + today by default. The strip is horizontally
@@ -193,8 +195,11 @@ function DateNavigator({ activeDate, onChange }) {
 // ─── Weight Log Card ──────────────────────────────────────────────────────────
 // Fetches the weight entry for `activeDate` on mount/date change.
 // Shows input form when no entry exists; shows logged value + Remove button when one does.
-function WeightLogCard({ weightUnit, activeDate }) {
-  const todayStr   = new Date().toISOString().split("T")[0];
+function WeightLogCard({ weightUnit, activeDate, todayStr: todayStrProp }) {
+  // Prefer the parent-supplied `todayStr` (which auto-refreshes at local
+  // midnight via useLocalToday). Fallback to a fresh local-time compute so
+  // this card still works if rendered standalone.
+  const todayStr   = todayStrProp || localDateString();
   const dateToShow = activeDate || todayStr;
   const isToday    = dateToShow === todayStr;
 
@@ -379,10 +384,27 @@ export default function Dashboard() {
   const { appUser } = useAuth();
   const { activeLog, fetchToday, fetchByDate } = useLog();
 
-  const todayStr = toDateString(new Date());
+  // `todayStr` is a *live* value — useLocalToday() refreshes it when the
+  // local clock crosses midnight, so the dashboard rolls over automatically
+  // without requiring a manual reload. It's computed in the browser's local
+  // timezone so users east of UTC (e.g. India) see the correct calendar day
+  // at and after midnight.
+  const todayStr = useLocalToday();
   const [activeDate, setActiveDate]     = useState(todayStr);
   const [selectedMeal, setSelectedMeal] = useState(null);
   const [showSearch, setShowSearch]     = useState(false);
+
+  // When midnight rolls over (todayStr changes), advance `activeDate` to the
+  // new today *only if* the user was sitting on the previous "today" pill.
+  // If they're inspecting a past date, leave them where they are.
+  const prevTodayRef = useRef(todayStr);
+  useEffect(() => {
+    if (prevTodayRef.current !== todayStr) {
+      setActiveDate((curr) => (curr === prevTodayRef.current ? todayStr : curr));
+      prevTodayRef.current = todayStr;
+    }
+  }, [todayStr]);
+
   const isToday = activeDate === todayStr;
 
   // Responsive ring size — smaller on phones so the macro stack fits beside it.
@@ -397,7 +419,12 @@ export default function Dashboard() {
   const ringSize = isNarrow ? 144 : 164;
 
   useEffect(() => {
-    if (isToday) fetchToday();
+    // Always fetch by the local-date string for both "today" and any past
+    // date. This is safer than relying on the server's own `todayString`
+    // helper, which is computed from the server's UTC clock and may not
+    // match the user's wallclock day (especially around midnight for users
+    // east of UTC).
+    if (isToday) fetchToday(activeDate);
     else fetchByDate(activeDate);
   }, [activeDate, isToday, fetchToday, fetchByDate]);
 
@@ -467,12 +494,12 @@ export default function Dashboard() {
       <motion.div variants={fadeUp} className="grid grid-cols-1 md:grid-cols-3 gap-3 items-stretch">
         <div className="md:col-span-2 flex min-w-0">
           <div className="flex-1 min-w-0">
-            <DateNavigator activeDate={activeDate} onChange={handleDateChange} />
+            <DateNavigator activeDate={activeDate} todayStr={todayStr} onChange={handleDateChange} />
           </div>
         </div>
         <div className="flex min-w-0">
           <div className="flex-1 min-w-0">
-            <WeightLogCard weightUnit={appUser?.profile?.weightUnit} activeDate={activeDate} />
+            <WeightLogCard weightUnit={appUser?.profile?.weightUnit} activeDate={activeDate} todayStr={todayStr} />
           </div>
         </div>
       </motion.div>
@@ -577,7 +604,7 @@ export default function Dashboard() {
               activeDate={activeDate}
               onClose={() => { setShowSearch(false); setSelectedMeal(null); }}
               onLogged={() => {
-                isToday ? fetchToday() : fetchByDate(activeDate);
+                isToday ? fetchToday(activeDate) : fetchByDate(activeDate);
                 setShowSearch(false);
                 setSelectedMeal(null);
               }}

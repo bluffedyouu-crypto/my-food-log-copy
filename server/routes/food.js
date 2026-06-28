@@ -74,23 +74,56 @@ function queryToWords(str) {
 
 router.post('/custom', requireAuth, async (c) => {
   try {
-    // 1. Parse the JSON body in Hono
-    const newFood = await c.req.json();
-    
-    // 2. Add the exact server-side timestamp
-    newFood.createdAt = new Date();
-    
-    // 3. Insert into the database using your existing Mongoose 'Food' model
+    // 1. Parse the JSON body
+    const body = await c.req.json();
+
+    // 2. Whitelist the fields we accept. The Mongoose schema would silently
+    //    drop unknown fields under strict mode, but explicit is better than
+    //    implicit — and it keeps the createdBy attribution tamper-proof.
+    if (!body.dish_name || typeof body.dish_name !== "string" || !body.dish_name.trim()) {
+      return c.json({ error: "dish_name is required" }, 400);
+    }
+
+    const authUser = c.get("authUser");
+
+    // Whitelist allowed quantity unit keys (must mirror the Food.quantities
+    // sub-schema). Any other keys in the incoming `quantities` object are
+    // silently discarded so a client can't smuggle arbitrary fields in.
+    const QUANTITY_KEYS = ["piece", "cup", "bowl", "glass", "tablespoon", "teaspoon", "slice", "plate"];
+    let quantities = null;
+    if (body.quantities && typeof body.quantities === "object") {
+      quantities = {};
+      for (const key of QUANTITY_KEYS) {
+        const v = body.quantities[key];
+        // Accept finite positive numbers only; everything else → null.
+        quantities[key] = (typeof v === "number" && Number.isFinite(v) && v > 0)
+          ? v
+          : null;
+      }
+    }
+
+    const newFood = {
+      dish_name:     body.dish_name.trim(),
+      calories_kcal: typeof body.calories_kcal === "number" ? body.calories_kcal : null,
+      macros:         body.macros         || {},
+      fats_breakdown: body.fats_breakdown || {},
+      vitamins:       body.vitamins       || {},
+      minerals:       body.minerals       || {},
+      ...(quantities ? { quantities } : {}),
+      // Force server-side attribution; never trust the client value.
+      createdBy: authUser?.email || authUser?.id || "unknown_user",
+      createdAt: new Date(),
+    };
+
+    // 3. Insert into the database
     const createdFood = await Food.create(newFood);
-    
-    // 4. Return a 201 (Created) status using Hono's c.json()
-    // We also run it through normaliseFoodDoc so your frontend gets the exact 
-    // same data shape it expects from your search endpoint!
+
+    // 4. Return 201 with the same normalised shape the search endpoint uses
     return c.json({
       success: true,
-      food: normaliseFoodDoc(createdFood)
+      food: normaliseFoodDoc(createdFood),
     }, 201);
-    
+
   } catch (error) {
     console.error("Failed to create custom food:", error);
     return c.json({ error: "Internal server error while saving food" }, 500);

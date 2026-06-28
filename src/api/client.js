@@ -1,6 +1,43 @@
 import axios from "axios";
 
-const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5000";
+// ─── Resolve the API base URL ─────────────────────────────────────────────────
+// The Hono server serves both the API (/api/*) and the production React build
+// from the same origin. When that's the case we *must* use a relative base —
+// any absolute URL that points at a different host (even the LAN IP alias of
+// the same machine) lands cookies on a different host, which breaks Better
+// Auth's OAuth state cookie roundtrip with a `state_mismatch` error.
+//
+// Decision matrix:
+//   • REACT_APP_API_URL unset                       → "" (relative, same-origin)
+//   • REACT_APP_API_URL matches window.location.origin → "" (relative, same-origin)
+//   • REACT_APP_API_URL differs from origin         → use as-is (separate dev server)
+//
+// This makes the typical local-dev case (React on :3000, API on :4000) keep
+// working with the explicit env var, while the production build served by
+// Hono is forced to use same-origin even if a stale env value got baked in.
+function resolveApiBase() {
+  const fromEnv = (process.env.REACT_APP_API_URL || "").trim().replace(/\/$/, "");
+
+  if (typeof window === "undefined") {
+    // SSR / pre-render — just return what we have; no origin to compare to.
+    return fromEnv;
+  }
+
+  if (!fromEnv) return ""; // No env → same-origin relative paths.
+
+  try {
+    const envOrigin = new URL(fromEnv).origin;
+    if (envOrigin === window.location.origin) {
+      return ""; // Same origin → use relative paths to avoid CORS/cookie traps.
+    }
+  } catch {
+    // Malformed env value — fall through and use it raw.
+  }
+
+  return fromEnv;
+}
+
+const API_BASE = resolveApiBase();
 
 const client = axios.create({
   baseURL: API_BASE,
@@ -40,8 +77,33 @@ export const authApi = {
     client.post("/api/auth/sign-in/email", { email, password }),
   signOut: () => client.post("/api/auth/sign-out"),
   getSession: () => client.get("/api/auth/get-session"),
-  googleSignIn: () => {
-    window.location.href = `${API_BASE}/api/auth/sign-in/social?provider=google&callbackURL=${window.location.origin}/dashboard`;
+
+  /**
+   * Start the Google OAuth flow.
+   *
+   * Better Auth's social sign-in endpoint is `POST /api/auth/sign-in/social`
+   * (verified in better-auth@1.6.5 dist/api/routes/sign-in.mjs). It expects
+   * a JSON body `{ provider, callbackURL }` and returns `{ url }` — the
+   * Google authorisation URL the browser must navigate to. The earlier
+   * implementation set `window.location.href` directly to the endpoint,
+   * which is a GET and results in 404/405 from Better Auth.
+   *
+   * Resolves with the redirect URL (caller does the navigation) so the
+   * caller can show error UI if the provider isn't configured server-side.
+   */
+  googleSignIn: async () => {
+    const callbackURL = `${window.location.origin}/auth/callback`;
+    const { data } = await client.post("/api/auth/sign-in/social", {
+      provider: "google",
+      callbackURL,
+    });
+    if (!data?.url) {
+      throw new Error(
+        "Google sign-in is not available. Ask the admin to configure " +
+        "GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET on the server."
+      );
+    }
+    return data.url;
   },
 };
 

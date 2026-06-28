@@ -10,11 +10,25 @@ export function LogProvider({ children }) {
   // Keep todayLog as an alias so existing consumers don't break
   const todayLog = activeLog;
 
-  const fetchToday = useCallback(async () => {
+  // Fetch the "today" log. If a `dateString` is supplied the caller is
+  // explicitly telling us which local date is "today" — we use the same
+  // date-specific endpoint so the server doesn't have to guess the user's
+  // timezone (its own `new Date()` is the *server's* local time, often UTC).
+  // Falls back to `/today` for callers that don't have a date handy yet.
+  const fetchToday = useCallback(async (dateString) => {
     setLoading(true);
     try {
-      const { data } = await logsApi.getToday();
-      setActiveLog(data.log);
+      const { data } = dateString
+        ? await logsApi.getByDate(dateString)
+        : await logsApi.getToday();
+      // The date-specific endpoint returns `{ log: null }` when no entries
+      // exist for that date — wrap it in an empty placeholder so consumers
+      // can still read totals/entries without null checks.
+      setActiveLog(
+        data.log || (dateString
+          ? { dateString, entries: [], totals: {}, mealTotals: {} }
+          : null)
+      );
     } catch (err) {
       console.error("Failed to fetch today's log:", err);
     } finally {

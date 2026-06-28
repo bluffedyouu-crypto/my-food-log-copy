@@ -64,7 +64,7 @@ function DesktopSidebar({ appUser, onSignOut }) {
             <Icon name="salad" size={18} />
           </div>
           <div>
-            <h1 className="text-white font-bold text-base leading-tight">Shredd</h1>
+            <h1 className="text-white font-bold text-base leading-tight">Shredd.fun</h1>
             <p className="text-slate-500 text-xs">Diet Tracker</p>
           </div>
         </div>

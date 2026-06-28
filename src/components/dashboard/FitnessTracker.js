@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { activityApi } from "../../api/client";
 import Icon from "../ui/Icon";
+import { localDateString, useLocalToday } from "../../utils/dateLocal";
 
 // ─── Activity type config ─────────────────────────────────────────────────────
 const ACTIVITY_TYPES = [
@@ -37,7 +38,7 @@ export default function FitnessTracker({
   activityLevel = "moderately_active",
   activeDate,   // YYYY-MM-DD — passed from Dashboard
 }) {
-  const todayStr   = new Date().toISOString().split("T")[0];
+  const todayStr   = useLocalToday();   // auto-refreshes at local midnight
   const dateToShow = activeDate || todayStr;
   const isToday    = dateToShow === todayStr;
 
@@ -90,11 +91,12 @@ export default function FitnessTracker({
   const pct         = Math.min((daysActive / weekTarget) * 100, 100);
   const activeDates = new Set(weekLogs.map((l) => l.dateString));
 
-  // Build last-7-days grid anchored to today (not activeDate)
+  // Build last-7-days grid anchored to today (not activeDate). Uses local-time
+  // formatting so the dot grid lines up with the user's wallclock days.
   const last7 = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(todayStr + "T12:00:00");
     d.setDate(d.getDate() - (6 - i));
-    return d.toISOString().split("T")[0];
+    return localDateString(d);
   });
 
   return (
