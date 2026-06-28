@@ -35,22 +35,33 @@ export function AuthProvider({ children }) {
 
   const signIn = async (email, password) => {
     setError(null);
-    const { data } = await authApi.signIn(email, password);
-    if (data?.token) localStorage.setItem("better_auth_token", data.token);
-    setSession(data);
-    const { data: userData } = await userApi.getMe();
-    setAppUser(userData.user);
-    return userData.user;
+    setLoading(true);
+    try {
+      const { data } = await authApi.signIn(email, password);
+      if (data?.token) localStorage.setItem("better_auth_token", data.token);
+      const { data: userData } = await userApi.getMe();
+      // Set BOTH atomically so route guards never see "authenticated but no appUser"
+      setSession(data);
+      setAppUser(userData.user);
+      return userData.user;
+    } finally {
+      setLoading(false);
+    }
   };
 
   const signUp = async (email, password, name) => {
     setError(null);
-    const { data } = await authApi.signUp(email, password, name);
-    if (data?.token) localStorage.setItem("better_auth_token", data.token);
-    setSession(data);
-    const { data: userData } = await userApi.getMe();
-    setAppUser(userData.user);
-    return userData.user;
+    setLoading(true);
+    try {
+      const { data } = await authApi.signUp(email, password, name);
+      if (data?.token) localStorage.setItem("better_auth_token", data.token);
+      const { data: userData } = await userApi.getMe();
+      setSession(data);
+      setAppUser(userData.user);
+      return userData.user;
+    } finally {
+      setLoading(false);
+    }
   };
 
   const signOut = async () => {
