@@ -12,8 +12,8 @@ export default function MacroBar({
   glowClass = "glow-indigo",
   unit = "g",
 }) {
-  const pct = target > 0 ? Math.min((consumed / target) * 100, 100) : 0;
-  const over = target > 0 && consumed > target;
+  const pct = target > 0 ? Math.min(((consumed || 0) / target) * 100, 100) : 0;
+  const over = target > 0 && (consumed || 0) > target;
 
   // Trigger fill animation after mount
   const [width, setWidth] = useState(0);
@@ -31,9 +31,9 @@ export default function MacroBar({
         <span className="text-xs font-semibold text-slate-300">{label}</span>
         <span className="text-xs text-slate-500">
           <span style={{ color: barColor }} className="font-semibold">
-            {Math.round(consumed)}
+            {Math.round(consumed || 0)}
           </span>
-          /{target}{unit}
+          /{target || 0}{unit}
         </span>
       </div>
 

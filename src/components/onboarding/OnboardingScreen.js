@@ -318,22 +318,22 @@ function UnitsStep({ answers, setAnswer }) {
               key={opt.value}
               onClick={() => setAnswer("weightUnit", opt.value)}
               whileTap={{ scale: 0.97 }}
-              className={`flex items-center gap-4 p-4 rounded-2xl border text-left transition-all ${
+              className={`relative flex items-center gap-3 p-3 sm:p-4 rounded-2xl border text-left transition-all overflow-hidden min-w-0 ${
                 answers.weightUnit === opt.value
                   ? "border-indigo-500 bg-indigo-500/15"
                   : "border-white/10 bg-white/3 hover:border-white/20"
               }`}
             >
-              <span className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-indigo-300" style={{ background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.22)" }}><Icon name={opt.icon} size={20} /></span>
-              <div>
-                <p className={`font-semibold ${answers.weightUnit === opt.value ? "text-indigo-300" : "text-white"}`}>
+              <span className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-indigo-300" style={{ background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.22)" }}><Icon name={opt.icon} size={18} /></span>
+              <div className="flex-1 min-w-0">
+                <p className={`font-semibold text-sm truncate ${answers.weightUnit === opt.value ? "text-indigo-300" : "text-white"}`}>
                   {opt.label}
                 </p>
-                <p className="text-sm text-slate-500">{opt.sub}</p>
+                <p className="text-xs text-slate-500">{opt.sub}</p>
               </div>
               {answers.weightUnit === opt.value && (
                 <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
-                  className="ml-auto w-5 h-5 rounded-full bg-indigo-500 flex items-center justify-center">
+                  className="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-500 flex items-center justify-center">
                   <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
@@ -356,22 +356,22 @@ function UnitsStep({ answers, setAnswer }) {
               key={opt.value}
               onClick={() => setAnswer("heightUnit", opt.value)}
               whileTap={{ scale: 0.97 }}
-              className={`flex items-center gap-4 p-4 rounded-2xl border text-left transition-all ${
+              className={`relative flex items-center gap-3 p-3 sm:p-4 rounded-2xl border text-left transition-all overflow-hidden min-w-0 ${
                 answers.heightUnit === opt.value
                   ? "border-indigo-500 bg-indigo-500/15"
                   : "border-white/10 bg-white/3 hover:border-white/20"
               }`}
             >
-              <span className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-indigo-300" style={{ background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.22)" }}><Icon name={opt.icon} size={20} /></span>
-              <div>
-                <p className={`font-semibold ${answers.heightUnit === opt.value ? "text-indigo-300" : "text-white"}`}>
+              <span className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-indigo-300" style={{ background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.22)" }}><Icon name={opt.icon} size={18} /></span>
+              <div className="flex-1 min-w-0">
+                <p className={`font-semibold text-sm truncate ${answers.heightUnit === opt.value ? "text-indigo-300" : "text-white"}`}>
                   {opt.label}
                 </p>
-                <p className="text-sm text-slate-500">{opt.sub}</p>
+                <p className="text-xs text-slate-500">{opt.sub}</p>
               </div>
               {answers.heightUnit === opt.value && (
                 <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
-                  className="ml-auto w-5 h-5 rounded-full bg-indigo-500 flex items-center justify-center">
+                  className="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-500 flex items-center justify-center">
                   <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>

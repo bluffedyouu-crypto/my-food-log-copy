@@ -450,7 +450,7 @@ export default function Dashboard() {
   );
 
   const calPct    = pct(totals.calories, targets.calories);
-  const remaining = Math.round(targets.calories - totals.calories);
+  const remaining = Math.round((targets.calories || 0) - (totals.calories || 0));
   const isOver    = remaining < 0;
 
   const mealFrequency = appUser?.profile?.mealFrequency || 3;
@@ -522,7 +522,7 @@ export default function Dashboard() {
               >
                 <span className="text-[11px] font-medium text-slate-500 uppercase tracking-widest">Calories</span>
                 <span className="text-3xl font-bold text-white leading-none mt-0.5">
-                  {Math.round(totals.calories)}
+                  {Math.round(totals.calories) || 0}
                 </span>
                 <span className="text-xs text-slate-500 mt-0.5">of {targets.calories} kcal</span>
               </CircularProgress>
@@ -546,9 +546,9 @@ export default function Dashboard() {
 
               <div className="grid grid-cols-3 gap-2 pt-1">
                 {[
-                  { label: "Protein", value: Math.round(totals.protein), color: "#22d3ee" },
-                  { label: "Carbs",   value: Math.round(totals.carbs),   color: "#f59e0b" },
-                  { label: "Fats",    value: Math.round(totals.fats),    color: "#f472b6" },
+                  { label: "Protein", value: Math.round(totals.protein) || 0, color: "#22d3ee" },
+                      { label: "Carbs",   value: Math.round(totals.carbs) || 0,   color: "#f59e0b" },
+                      { label: "Fats",    value: Math.round(totals.fats) || 0,    color: "#f472b6" },
                 ].map((m) => (
                   <div key={m.label} className="rounded-xl p-2.5 text-center"
                     style={{ background: `${m.color}0d`, border: `1px solid ${m.color}20` }}>

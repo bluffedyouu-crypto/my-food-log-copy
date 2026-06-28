@@ -582,27 +582,32 @@ function DesktopLayout({
   onSearch, onRemove, onSaveClick,
 }) {
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="w-full">
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-6"
+        className="mb-5"
       >
         <h1 className="text-2xl font-bold text-white">Custom Bowl Builder</h1>
         <p className="text-slate-400 text-sm mt-1">Drag ingredients into your glowing bowl</p>
       </motion.div>
 
-      <div className="grid grid-cols-3 gap-6">
-        {/* Left: search */}
+      {/* Full-width 3-column layout. Left and right panels are sticky so they
+          stay in view when the center scrolls (unlikely but future-proof).
+          The wider ratio (1fr / 1.4fr / 1fr) gives the bowl more room so it
+          feels like the centrepiece rather than cramped into equal thirds. */}
+      <div className="grid gap-6" style={{ gridTemplateColumns: "1fr 1.5fr 1fr" }}>
+        {/* Left: search — sticky, full viewport height */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.1 }}
+          className="self-start sticky top-8"
         >
-          <div className="glass rounded-2xl p-4">
+          <div className="glass rounded-2xl p-5 h-[calc(100vh-10rem)] flex flex-col">
             <h2 className="text-sm font-semibold text-slate-300 mb-3">Food library</h2>
             <SearchInput query={query} onSearch={onSearch} placeholder="Search ingredients to drag…" />
-            <div className="space-y-2 max-h-[calc(100vh-340px)] overflow-y-auto mt-3">
+            <div className="space-y-2 flex-1 overflow-y-auto mt-3 pr-1">
               {searching && (
                 <div className="flex justify-center py-4">
                   <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
@@ -623,12 +628,12 @@ function DesktopLayout({
           </div>
         </motion.div>
 
-        {/* Center: bowl */}
+        {/* Center: bowl + totals + save */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.15 }}
-          className="flex flex-col items-center gap-4"
+          className="flex flex-col items-center gap-5"
         >
           <DesktopDropZone isOver={isOver}>
             <BowlVisual ingredients={ingredients} isOver={isOver} />
@@ -658,20 +663,23 @@ function DesktopLayout({
           )}
         </motion.div>
 
-        {/* Right: ingredient list */}
+        {/* Right: ingredient list — sticky, full viewport height */}
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.2 }}
+          className="self-start sticky top-8"
         >
-          <div className="glass rounded-2xl p-4">
+          <div className="glass rounded-2xl p-5 h-[calc(100vh-10rem)] flex flex-col">
             <h2 className="text-sm font-semibold text-slate-300 mb-3">
               Ingredients ({ingredients.length})
             </h2>
             {ingredients.length === 0 ? (
-              <p className="text-slate-600 text-sm text-center py-8">Your bowl is empty</p>
+              <p className="text-slate-600 text-sm text-center py-8 flex-1 flex items-center justify-center">
+                Your bowl is empty
+              </p>
             ) : (
-              <div className="space-y-2 max-h-[calc(100vh-260px)] overflow-y-auto pr-1">
+              <div className="space-y-2 flex-1 overflow-y-auto pr-1">
                 <AnimatePresence>
                   {ingredients.map((ing) => (
                     <IngredientRow key={ing.id} ingredient={ing} onRemove={onRemove} />

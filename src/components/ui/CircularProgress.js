@@ -21,7 +21,7 @@ export default function CircularProgress({
 }) {
   const radius       = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  const clamped      = Math.min(Math.max(value, 0), 100);
+  const clamped      = Math.min(Math.max(value || 0, 0), 100);
   const offset       = circumference - (clamped / 100) * circumference;
   const displayColor = value > 100 ? "#ef4444" : color;
 
